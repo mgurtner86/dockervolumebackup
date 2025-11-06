@@ -56,7 +56,11 @@ export const initDatabase = async () => {
       CREATE INDEX IF NOT EXISTS idx_schedules_enabled ON schedules(enabled);
 
       INSERT INTO settings (key, value)
-      VALUES ('backup_storage_path', '/backups')
+      VALUES
+        ('backup_storage_path', '//server/share'),
+        ('cifs_username', ''),
+        ('cifs_password', ''),
+        ('cifs_domain', '')
       ON CONFLICT (key) DO NOTHING;
     `);
     console.log('Database initialized successfully');

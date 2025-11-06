@@ -5,6 +5,9 @@ import { api } from '../lib/api';
 export function Settings() {
   const [settings, setSettings] = useState<Record<string, string>>({});
   const [backupPath, setBackupPath] = useState('');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [domain, setDomain] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [notification, setNotification] = useState<{
@@ -20,7 +23,10 @@ export function Settings() {
     try {
       const data = await api.settings.getAll();
       setSettings(data);
-      setBackupPath(data.backup_storage_path || '/backups');
+      setBackupPath(data.backup_storage_path || '//server/share');
+      setUsername(data.cifs_username || '');
+      setPassword(data.cifs_password || '');
+      setDomain(data.cifs_domain || '');
     } catch (error) {
       console.error('Error loading settings:', error);
       showNotification('error', 'Failed to load settings');
@@ -39,7 +45,12 @@ export function Settings() {
     setSaving(true);
 
     try {
-      await api.settings.update('backup_storage_path', backupPath);
+      await api.settings.update({
+        backup_storage_path: backupPath,
+        cifs_username: username,
+        cifs_password: password,
+        cifs_domain: domain,
+      });
       showNotification('success', 'Settings saved successfully');
       await loadSettings();
     } catch (error) {
@@ -78,11 +89,11 @@ export function Settings() {
         <div className="space-y-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Backup Storage Path
+              Network Storage Path (CIFS/SMB)
             </label>
             <p className="text-sm text-gray-500 mb-3">
-              Configure the network storage path where backups will be stored. This should
-              be a mounted network storage location accessible from the container.
+              Enter the UNC path to your network storage. The application will automatically
+              mount this storage using the credentials provided below.
             </p>
             <input
               type="text"
@@ -90,20 +101,64 @@ export function Settings() {
               value={backupPath}
               onChange={(e) => setBackupPath(e.target.value)}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="/mnt/network-storage/backups"
+              placeholder="//server/share"
             />
             <p className="text-xs text-gray-500 mt-2">
-              Example: /mnt/nfs/backups or /mnt/smb/docker-backups
+              Example: //192.168.1.100/backups or //nas.local/docker-backups
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Username
+              </label>
+              <input
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="username"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Password
+              </label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="••••••••"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Domain (Optional)
+            </label>
+            <input
+              type="text"
+              value={domain}
+              onChange={(e) => setDomain(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="WORKGROUP"
+            />
+            <p className="text-xs text-gray-500 mt-2">
+              Leave empty if not using a domain
             </p>
           </div>
 
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <h4 className="font-medium text-blue-900 mb-2">Network Storage Setup</h4>
+            <h4 className="font-medium text-blue-900 mb-2">CIFS/SMB Network Storage</h4>
             <ul className="text-sm text-blue-800 space-y-1">
-              <li>• Mount your network storage to the Docker host</li>
-              <li>• Add the mount path to docker-compose.yml volumes</li>
-              <li>• Ensure the container has read/write permissions</li>
-              <li>• Test the path is accessible before saving</li>
+              <li>• Storage will be automatically mounted when creating backups</li>
+              <li>• Credentials are stored securely in the database</li>
+              <li>• Ensure the network storage is accessible from the container</li>
+              <li>• The application requires cifs-utils to be installed</li>
             </ul>
           </div>
 

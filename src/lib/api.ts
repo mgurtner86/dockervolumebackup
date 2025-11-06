@@ -55,11 +55,11 @@ export const api = {
   },
   settings: {
     getAll: () => fetch(`${API_URL}/settings`).then((r) => r.json()),
-    update: (key: string, value: string) =>
+    update: (settings: Record<string, string>) =>
       fetch(`${API_URL}/settings`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ key, value }),
+        body: JSON.stringify({ settings }),
       }).then((r) => r.json()),
   },
 };

@@ -4,7 +4,7 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import path from 'path';
 import { promises as fs } from 'fs';
-import { getSetting } from './settings';
+import { getBackupStoragePath } from '../utils/cifs-mount';
 
 const execAsync = promisify(exec);
 const router = Router();
@@ -70,9 +70,9 @@ router.post('/trigger', async (req, res) => {
     }
 
     const volume = volumeResult.rows[0];
-    const backupStoragePath = await getSetting('backup_storage_path') || '/backups';
+    const backupStoragePath = await getBackupStoragePath();
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const backupPath = `${backupStoragePath}/${volume.name}_${timestamp}.tar.gz`;
+    const backupPath = path.join(backupStoragePath, `${volume.name}_${timestamp}.tar.gz`);
 
     const result = await pool.query(
       `INSERT INTO backups (volume_id, backup_path, status, started_at)
