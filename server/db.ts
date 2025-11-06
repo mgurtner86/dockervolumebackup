@@ -43,10 +43,21 @@ export const initDatabase = async () => {
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
 
+      CREATE TABLE IF NOT EXISTS settings (
+        id SERIAL PRIMARY KEY,
+        key TEXT UNIQUE NOT NULL,
+        value TEXT NOT NULL,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
       CREATE INDEX IF NOT EXISTS idx_backups_volume_id ON backups(volume_id);
       CREATE INDEX IF NOT EXISTS idx_backups_status ON backups(status);
       CREATE INDEX IF NOT EXISTS idx_schedules_volume_id ON schedules(volume_id);
       CREATE INDEX IF NOT EXISTS idx_schedules_enabled ON schedules(enabled);
+
+      INSERT INTO settings (key, value)
+      VALUES ('backup_storage_path', '/backups')
+      ON CONFLICT (key) DO NOTHING;
     `);
     console.log('Database initialized successfully');
   } finally {

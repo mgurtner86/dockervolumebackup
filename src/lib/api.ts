@@ -53,4 +53,13 @@ export const api = {
     delete: (id: string) =>
       fetch(`${API_URL}/schedules/${id}`, { method: 'DELETE' }).then((r) => r.json()),
   },
+  settings: {
+    getAll: () => fetch(`${API_URL}/settings`).then((r) => r.json()),
+    update: (key: string, value: string) =>
+      fetch(`${API_URL}/settings`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key, value }),
+      }).then((r) => r.json()),
+  },
 };

@@ -4,6 +4,7 @@ import { initDatabase } from './db';
 import volumesRouter from './routes/volumes';
 import backupsRouter from './routes/backups';
 import schedulesRouter from './routes/schedules';
+import settingsRouter from './routes/settings';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -14,6 +15,7 @@ app.use(express.json());
 app.use('/api/volumes', volumesRouter);
 app.use('/api/backups', backupsRouter);
 app.use('/api/schedules', schedulesRouter);
+app.use('/api/settings', settingsRouter);
 
 app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
