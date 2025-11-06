@@ -1,7 +1,9 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "module": "commonjs",
+    "module": "ESNext",
+    "moduleResolution": "node",
+    "target": "ES2020",
     "outDir": "./dist/server",
     "rootDir": "./server",
     "noEmit": false,
