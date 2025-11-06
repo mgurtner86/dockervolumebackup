@@ -19,14 +19,14 @@ services:
     build: .
     ports:
       - "8080:80"
-      - "3000:3000"
+      - "3003:3000"
     environment:
       - POSTGRES_HOST=postgres
       - POSTGRES_PORT=5432
       - POSTGRES_DB=backup_manager
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
-      - VITE_API_URL=http://localhost:3000/api
+      - VITE_API_URL=http://localhost:3003/api
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - backup-storage:/backups
