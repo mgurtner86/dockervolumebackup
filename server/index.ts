@@ -1,10 +1,10 @@
 import express from 'express';
 import cors from 'cors';
-import { initDatabase } from './db';
-import volumesRouter from './routes/volumes';
-import backupsRouter from './routes/backups';
-import schedulesRouter from './routes/schedules';
-import settingsRouter from './routes/settings';
+import { initDatabase } from './db.js';
+import volumesRouter from './routes/volumes.js';
+import backupsRouter from './routes/backups.js';
+import schedulesRouter from './routes/schedules.js';
+import settingsRouter from './routes/settings.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;

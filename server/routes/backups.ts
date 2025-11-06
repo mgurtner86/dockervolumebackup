@@ -1,10 +1,10 @@
 import { Router } from 'express';
-import pool from '../db';
+import pool from '../db.js';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import path from 'path';
 import { promises as fs } from 'fs';
-import { getBackupStoragePath } from '../utils/cifs-mount';
+import { getBackupStoragePath } from '../utils/cifs-mount.js';
 
 const execAsync = promisify(exec);
 const router = Router();
