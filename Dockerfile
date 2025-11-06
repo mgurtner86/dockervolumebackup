@@ -10,18 +10,24 @@ COPY . .
 
 RUN npm run build
 
-FROM nginx:alpine
+FROM node:18-alpine
 
-RUN apk add --no-cache docker-cli bash tar gzip
+RUN apk add --no-cache docker-cli bash tar gzip nginx
 
-COPY --from=builder /app/dist /usr/share/nginx/html
+WORKDIR /app
 
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=builder /app/dist/client /usr/share/nginx/html
+COPY --from=builder /app/dist/server ./server
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package.json ./
+
+COPY nginx.conf /etc/nginx/http.d/default.conf
 
 COPY docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh
 
-EXPOSE 80
+RUN mkdir -p /backups
+
+EXPOSE 80 3000
 
 ENTRYPOINT ["/docker-entrypoint.sh"]
-CMD ["nginx", "-g", "daemon off;"]

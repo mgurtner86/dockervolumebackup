@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Calendar, Plus, Trash2, Power, PowerOff } from 'lucide-react';
 import { Schedule } from '../types';
-import { getApiUrl } from '../lib/supabase';
+import { api } from '../lib/api';
 
 interface ScheduleManagerProps {
   volumeId?: string;
@@ -19,8 +19,7 @@ export function ScheduleManager({ volumeId }: ScheduleManagerProps) {
 
   const fetchSchedules = async () => {
     try {
-      const response = await fetch(getApiUrl('/schedules'));
-      const data = await response.json();
+      const data = await api.schedules.getAll();
       setSchedules(data);
     } catch (error) {
       console.error('Error fetching schedules:', error);
@@ -34,15 +33,10 @@ export function ScheduleManager({ volumeId }: ScheduleManagerProps) {
     if (!volumeId) return;
 
     try {
-      const response = await fetch(getApiUrl('/schedules'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          volume_id: volumeId,
-          cron_expression: newSchedule,
-        }),
+      const data = await api.schedules.create({
+        volume_id: volumeId,
+        cron_expression: newSchedule,
       });
-      const data = await response.json();
       setSchedules([data, ...schedules]);
       setNewSchedule('');
       setShowAddForm(false);
@@ -53,12 +47,7 @@ export function ScheduleManager({ volumeId }: ScheduleManagerProps) {
 
   const handleToggleSchedule = async (id: string, enabled: boolean) => {
     try {
-      const response = await fetch(getApiUrl(`/schedules/${id}`), {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ enabled }),
-      });
-      const data = await response.json();
+      const data = await api.schedules.update(id, { enabled });
       setSchedules(schedules.map((s) => (s.id === id ? data : s)));
     } catch (error) {
       console.error('Error toggling schedule:', error);
@@ -69,7 +58,7 @@ export function ScheduleManager({ volumeId }: ScheduleManagerProps) {
     if (!confirm('Are you sure you want to delete this schedule?')) return;
 
     try {
-      await fetch(getApiUrl(`/schedules/${id}`), { method: 'DELETE' });
+      await api.schedules.delete(id);
       setSchedules(schedules.filter((s) => s.id !== id));
     } catch (error) {
       console.error('Error deleting schedule:', error);

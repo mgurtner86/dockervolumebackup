@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { HardDrive, Trash2, Plus } from 'lucide-react';
 import { Volume } from '../types';
-import { getApiUrl } from '../lib/supabase';
+import { api } from '../lib/api';
 
 interface VolumeListProps {
   onSelectVolume: (volume: Volume) => void;
@@ -20,8 +20,7 @@ export function VolumeList({ onSelectVolume, selectedVolumeId }: VolumeListProps
 
   const fetchVolumes = async () => {
     try {
-      const response = await fetch(getApiUrl('/volumes'));
-      const data = await response.json();
+      const data = await api.volumes.getAll();
       setVolumes(data);
     } catch (error) {
       console.error('Error fetching volumes:', error);
@@ -33,12 +32,7 @@ export function VolumeList({ onSelectVolume, selectedVolumeId }: VolumeListProps
   const handleAddVolume = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const response = await fetch(getApiUrl('/volumes'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newVolume),
-      });
-      const data = await response.json();
+      const data = await api.volumes.create(newVolume);
       setVolumes([data, ...volumes]);
       setNewVolume({ name: '', path: '' });
       setShowAddForm(false);
@@ -51,7 +45,7 @@ export function VolumeList({ onSelectVolume, selectedVolumeId }: VolumeListProps
     if (!confirm('Are you sure you want to delete this volume?')) return;
 
     try {
-      await fetch(getApiUrl(`/volumes/${id}`), { method: 'DELETE' });
+      await api.volumes.delete(id);
       setVolumes(volumes.filter(v => v.id !== id));
     } catch (error) {
       console.error('Error deleting volume:', error);

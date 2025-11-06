@@ -3,8 +3,9 @@ import { Server, AlertCircle } from 'lucide-react';
 import { VolumeList } from './components/VolumeList';
 import { BackupList } from './components/BackupList';
 import { ScheduleManager } from './components/ScheduleManager';
+import { FileBrowser } from './components/FileBrowser';
 import { Volume, Backup } from './types';
-import { getApiUrl } from './lib/supabase';
+import { api } from './lib/api';
 
 function App() {
   const [selectedVolume, setSelectedVolume] = useState<Volume | undefined>();
@@ -24,17 +25,8 @@ function App() {
     if (!selectedVolume) return;
 
     try {
-      const response = await fetch(getApiUrl('/backups/trigger'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ volume_id: selectedVolume.id }),
-      });
-
-      if (response.ok) {
-        showNotification('success', 'Backup started successfully');
-      } else {
-        showNotification('error', 'Failed to start backup');
-      }
+      await api.backups.trigger(selectedVolume.id);
+      showNotification('success', 'Backup started successfully');
     } catch (error) {
       showNotification('error', 'Error starting backup');
       console.error('Error triggering backup:', error);
@@ -46,15 +38,22 @@ function App() {
     setShowRestoreDialog(true);
   };
 
-  const confirmRestore = () => {
+  const confirmRestore = async () => {
     if (!restoreBackup) return;
 
-    showNotification(
-      'success',
-      `Restore initiated for ${restoreBackup.volumes?.name || 'volume'}`
-    );
-    setShowRestoreDialog(false);
-    setRestoreBackup(null);
+    try {
+      await api.backups.restore(restoreBackup.id.toString());
+      showNotification(
+        'success',
+        `Restore completed for ${restoreBackup.volumes?.name || 'volume'}`
+      );
+    } catch (error) {
+      showNotification('error', 'Failed to restore backup');
+      console.error('Error restoring backup:', error);
+    } finally {
+      setShowRestoreDialog(false);
+      setRestoreBackup(null);
+    }
   };
 
   return (
@@ -108,6 +107,8 @@ function App() {
                     {selectedVolume.name} - {selectedVolume.path}
                   </p>
                 </div>
+
+                <FileBrowser volumeId={selectedVolume.id} />
 
                 <BackupList
                   volumeId={selectedVolume.id}

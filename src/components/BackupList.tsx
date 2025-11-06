@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Database, Play, RotateCcw, Clock } from 'lucide-react';
 import { Backup } from '../types';
-import { getApiUrl } from '../lib/supabase';
+import { api } from '../lib/api';
 
 interface BackupListProps {
   volumeId?: string;
@@ -21,11 +21,7 @@ export function BackupList({ volumeId, onTriggerBackup, onRestore }: BackupListP
 
   const fetchBackups = async () => {
     try {
-      const url = volumeId
-        ? getApiUrl(`/backups?volume_id=${volumeId}`)
-        : getApiUrl('/backups');
-      const response = await fetch(url);
-      const data = await response.json();
+      const data = await api.backups.getAll(volumeId);
       setBackups(data);
     } catch (error) {
       console.error('Error fetching backups:', error);

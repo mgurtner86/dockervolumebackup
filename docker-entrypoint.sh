@@ -3,4 +3,7 @@ set -e
 
 mkdir -p /backups
 
-exec "$@"
+nginx
+
+cd /app
+node server/index.js
