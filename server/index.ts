@@ -5,6 +5,7 @@ import volumesRouter from './routes/volumes.js';
 import backupsRouter from './routes/backups.js';
 import schedulesRouter from './routes/schedules.js';
 import settingsRouter from './routes/settings.js';
+import { mountCifsAtStartup } from './utils/cifs-mount.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -24,6 +25,7 @@ app.get('/health', (req, res) => {
 const startServer = async () => {
   try {
     await initDatabase();
+    await mountCifsAtStartup();
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
     });

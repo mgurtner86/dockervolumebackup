@@ -70,7 +70,7 @@ router.post('/trigger', async (req, res) => {
     }
 
     const volume = volumeResult.rows[0];
-    const backupStoragePath = await getBackupStoragePath();
+    const backupStoragePath = getBackupStoragePath();
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const backupPath = path.join(backupStoragePath, `${volume.name}_${timestamp}.tar.gz`);
 
@@ -171,6 +171,60 @@ router.post('/restore', async (req, res) => {
   } catch (error) {
     console.error('Error restoring backup:', error);
     res.status(500).json({ error: 'Failed to restore backup' });
+  }
+});
+
+router.get('/browse', async (req, res) => {
+  const subPath = req.query.path as string || '';
+
+  try {
+    const backupStoragePath = getBackupStoragePath();
+    const fullPath = path.join(backupStoragePath, subPath);
+
+    try {
+      await fs.access(fullPath);
+    } catch {
+      return res.status(404).json({ error: 'Path not accessible' });
+    }
+
+    const items = await fs.readdir(fullPath, { withFileTypes: true });
+
+    const files = await Promise.all(
+      items.map(async (item) => {
+        const itemPath = path.join(fullPath, item.name);
+        let size = 0;
+        let modified = new Date();
+
+        try {
+          const stats = await fs.stat(itemPath);
+          size = stats.size;
+          modified = stats.mtime;
+        } catch (error) {
+          console.error('Error getting stats:', error);
+        }
+
+        return {
+          name: item.name,
+          isDirectory: item.isDirectory(),
+          size,
+          modified: modified.toISOString(),
+          path: path.join(subPath, item.name),
+        };
+      })
+    );
+
+    res.json({
+      currentPath: subPath,
+      basePath: backupStoragePath,
+      items: files.sort((a, b) => {
+        if (a.isDirectory && !b.isDirectory) return -1;
+        if (!a.isDirectory && b.isDirectory) return 1;
+        return a.name.localeCompare(b.name);
+      }),
+    });
+  } catch (error) {
+    console.error('Error browsing backups:', error);
+    res.status(500).json({ error: 'Failed to browse backups' });
   }
 });
 

@@ -1,127 +1,80 @@
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { promises as fs } from 'fs';
-import path from 'path';
 import { getSetting } from '../routes/settings.js';
 
 const execAsync = promisify(exec);
 
 const MOUNT_BASE = '/mnt/backup-storage';
+let mountedAtStartup = false;
 
-export async function ensureCifsMounted(): Promise<string> {
-  const backupPath = await getSetting('backup_storage_path');
-  const username = await getSetting('cifs_username');
-  const password = await getSetting('cifs_password');
-  const domain = await getSetting('cifs_domain');
-
-  if (!backupPath) {
-    throw new Error('Backup storage path not configured');
-  }
-
-  await fs.mkdir(MOUNT_BASE, { recursive: true });
-
-  const isMounted = await checkIfMounted(MOUNT_BASE);
-
-  if (isMounted) {
-    console.log(`CIFS share already mounted at ${MOUNT_BASE}`);
-    return MOUNT_BASE;
-  }
-
-  console.log(`Attempting to mount CIFS share to ${MOUNT_BASE}...`);
-
-  let mountOptions = 'rw';
-
-  if (username) {
-    mountOptions += `,username=${username}`;
-  }
-
-  if (password) {
-    mountOptions += `,password=${password}`;
-  }
-
-  if (domain) {
-    mountOptions += `,domain=${domain}`;
-  }
-
+export async function mountCifsAtStartup(): Promise<void> {
   try {
-    const mountCommand = `mount -t cifs "${backupPath}" "${MOUNT_BASE}" -o ${mountOptions}`;
-    await execAsync(mountCommand);
-    console.log(`Successfully mounted CIFS share ${backupPath} to ${MOUNT_BASE}`);
-    return MOUNT_BASE;
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const backupPath = await getSetting('backup_storage_path');
 
-    if (errorMessage.includes('Resource busy') || errorMessage.includes('already mounted')) {
-      console.log('CIFS share is already mounted, verifying...');
-      const stillMounted = await checkIfMounted(MOUNT_BASE);
-      if (stillMounted) {
-        console.log('Confirmed: CIFS share is mounted and accessible');
-        return MOUNT_BASE;
-      }
+    if (!backupPath) {
+      console.log('No CIFS backup path configured, using local /backups directory');
+      await fs.mkdir('/backups', { recursive: true });
+      return;
     }
 
-    console.error('Failed to mount CIFS share:', error);
-    throw new Error(`Failed to mount network storage: ${errorMessage}`);
+    const username = await getSetting('cifs_username');
+    const password = await getSetting('cifs_password');
+    const domain = await getSetting('cifs_domain');
+
+    await fs.mkdir(MOUNT_BASE, { recursive: true });
+
+    const isMounted = await isAlreadyMounted();
+    if (isMounted) {
+      console.log(`CIFS share already mounted at ${MOUNT_BASE}`);
+      mountedAtStartup = true;
+      return;
+    }
+
+    let mountOptions = 'rw';
+    if (username) mountOptions += `,username=${username}`;
+    if (password) mountOptions += `,password=${password}`;
+    if (domain) mountOptions += `,domain=${domain}`;
+
+    console.log(`Mounting CIFS share ${backupPath} to ${MOUNT_BASE}...`);
+    const mountCommand = `mount -t cifs "${backupPath}" "${MOUNT_BASE}" -o ${mountOptions}`;
+    await execAsync(mountCommand);
+
+    console.log(`✓ Successfully mounted CIFS share to ${MOUNT_BASE}`);
+    mountedAtStartup = true;
+  } catch (error) {
+    console.error('Failed to mount CIFS share at startup:', error);
+    console.log('Will use local /backups directory instead');
+    await fs.mkdir('/backups', { recursive: true });
   }
 }
 
-async function checkIfMounted(mountPoint: string): Promise<boolean> {
+async function isAlreadyMounted(): Promise<boolean> {
   try {
-    const { stdout } = await execAsync(`mount`);
-    const lines = stdout.split('\n');
-
-    const mountLine = lines.find(line => {
-      return line.includes(mountPoint) && (
-        line.includes(` on ${mountPoint} `) ||
-        line.includes(` ${mountPoint} `) ||
-        line.endsWith(` ${mountPoint}`)
-      );
-    });
-
-    console.log(`Checking if ${mountPoint} is mounted...`);
-    if (mountLine) {
-      console.log(`Found mount entry: ${mountLine}`);
-
-      try {
-        await fs.access(mountPoint);
-        const entries = await fs.readdir(mountPoint);
-        console.log(`Mount point is accessible, contains ${entries.length} items`);
-        return true;
-      } catch (err) {
-        console.log(`Mount point exists in mount table but not accessible:`, err);
-        return false;
-      }
-    } else {
-      console.log(`No mount entry found for ${mountPoint}`);
-      console.log(`Full mount output (first 5 lines):`);
-      lines.slice(0, 5).forEach(line => console.log(`  ${line}`));
-    }
-
-    return false;
-  } catch (error) {
-    console.log(`Error checking mount status:`, error);
+    const { stdout } = await execAsync('mount');
+    return stdout.includes(MOUNT_BASE);
+  } catch {
     return false;
   }
+}
+
+export function getBackupStoragePath(): string {
+  return mountedAtStartup ? MOUNT_BASE : '/backups';
 }
 
 export async function unmountCifs(): Promise<void> {
+  if (!mountedAtStartup) {
+    return;
+  }
+
   try {
-    const isMounted = await checkIfMounted(MOUNT_BASE);
+    const isMounted = await isAlreadyMounted();
     if (isMounted) {
       await execAsync(`umount "${MOUNT_BASE}"`);
       console.log('Successfully unmounted CIFS share');
+      mountedAtStartup = false;
     }
   } catch (error) {
     console.error('Failed to unmount CIFS share:', error);
-  }
-}
-
-export async function getBackupStoragePath(): Promise<string> {
-  try {
-    const mountPath = await ensureCifsMounted();
-    return mountPath;
-  } catch (error) {
-    console.error('Error getting backup storage path:', error);
-    return '/backups';
   }
 }
