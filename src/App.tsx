@@ -1,14 +1,16 @@
 import { useState } from 'react';
-import { Server, AlertCircle, Settings as SettingsIcon, Home } from 'lucide-react';
+import { Server, AlertCircle, Settings as SettingsIcon, Home, LogOut } from 'lucide-react';
 import { VolumeList } from './components/VolumeList';
 import { BackupList } from './components/BackupList';
 import { ScheduleManager } from './components/ScheduleManager';
 import { Settings } from './components/Settings';
 import { RestoreWizard, RestoreOptions } from './components/RestoreWizard';
+import { useAuth } from './components/AuthProvider';
 import { Volume, Backup } from './types';
 import { api } from './lib/api';
 
 function App() {
+  const { user, logout } = useAuth();
   const [currentPage, setCurrentPage] = useState<'home' | 'settings'>('home');
   const [selectedVolume, setSelectedVolume] = useState<Volume | undefined>();
   const [notification, setNotification] = useState<{
@@ -100,7 +102,14 @@ function App() {
                 </p>
               </div>
             </div>
-            <nav className="flex items-center gap-2">
+            <div className="flex items-center gap-4">
+              {user && (
+                <div className="text-right">
+                  <p className="text-sm font-medium text-slate-800">{user.name}</p>
+                  <p className="text-xs text-slate-600">{user.email}</p>
+                </div>
+              )}
+              <nav className="flex items-center gap-2">
               <button
                 onClick={() => setCurrentPage('home')}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
@@ -123,7 +132,15 @@ function App() {
                 <SettingsIcon size={20} />
                 Settings
               </button>
+              <button
+                onClick={logout}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors"
+              >
+                <LogOut size={20} />
+                Logout
+              </button>
             </nav>
+            </div>
           </div>
         </div>
       </header>
