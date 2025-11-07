@@ -69,20 +69,37 @@ async function checkIfMounted(mountPoint: string): Promise<boolean> {
   try {
     const { stdout } = await execAsync(`mount`);
     const lines = stdout.split('\n');
-    const isMounted = lines.some(line => line.includes(` on ${mountPoint} `));
 
-    if (isMounted) {
+    const mountLine = lines.find(line => {
+      return line.includes(mountPoint) && (
+        line.includes(` on ${mountPoint} `) ||
+        line.includes(` ${mountPoint} `) ||
+        line.endsWith(` ${mountPoint}`)
+      );
+    });
+
+    console.log(`Checking if ${mountPoint} is mounted...`);
+    if (mountLine) {
+      console.log(`Found mount entry: ${mountLine}`);
+
       try {
         await fs.access(mountPoint);
-        const stats = await fs.stat(mountPoint);
-        return stats.isDirectory();
-      } catch {
+        const entries = await fs.readdir(mountPoint);
+        console.log(`Mount point is accessible, contains ${entries.length} items`);
+        return true;
+      } catch (err) {
+        console.log(`Mount point exists in mount table but not accessible:`, err);
         return false;
       }
+    } else {
+      console.log(`No mount entry found for ${mountPoint}`);
+      console.log(`Full mount output (first 5 lines):`);
+      lines.slice(0, 5).forEach(line => console.log(`  ${line}`));
     }
 
     return false;
   } catch (error) {
+    console.log(`Error checking mount status:`, error);
     return false;
   }
 }
