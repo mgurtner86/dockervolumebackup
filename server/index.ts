@@ -12,7 +12,7 @@ import { startBackupSync, syncOrphanedBackups } from './utils/backup-sync.js';
 import { authMiddleware } from './auth.js';
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = parseInt(process.env.PORT || '3000', 10);
 
 app.use(cors({
   origin: true,
@@ -42,12 +42,41 @@ app.get('/health', (req, res) => {
 
 const startServer = async () => {
   try {
-    await initDatabase();
-    await mountCifsAtStartup();
-    await syncOrphanedBackups();
-    startBackupSync();
-    app.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
+    console.log('Starting server initialization...');
+
+    try {
+      await initDatabase();
+      console.log('✓ Database initialized');
+    } catch (error) {
+      console.error('⚠ Database initialization failed:', error);
+      console.log('Server will start anyway, but database operations will fail');
+    }
+
+    try {
+      await mountCifsAtStartup();
+      console.log('✓ CIFS mount checked');
+    } catch (error) {
+      console.error('⚠ CIFS mount failed:', error);
+    }
+
+    try {
+      await syncOrphanedBackups();
+      console.log('✓ Backup sync completed');
+    } catch (error) {
+      console.error('⚠ Backup sync failed:', error);
+    }
+
+    try {
+      startBackupSync();
+      console.log('✓ Backup sync started');
+    } catch (error) {
+      console.error('⚠ Backup sync start failed:', error);
+    }
+
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`✓ Server running on http://0.0.0.0:${PORT}`);
+      console.log(`  Health check: http://0.0.0.0:${PORT}/health`);
+      console.log(`  Auth endpoint: http://0.0.0.0:${PORT}/auth/check-setup`);
     });
   } catch (error) {
     console.error('Failed to start server:', error);
