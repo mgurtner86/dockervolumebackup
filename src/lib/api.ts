@@ -1,7 +1,7 @@
-const API_URL = import.meta.env.VITE_API_URL || '/api';
+const API_URL = import.meta.env.VITE_API_URL || '';
 
 function buildUrl(path: string, params?: Record<string, string>): string {
-  let url = `${API_URL}${path}`;
+  let url = `${API_URL}/api${path}`;
   if (params) {
     const searchParams = new URLSearchParams(params);
     url += `?${searchParams.toString()}`;
