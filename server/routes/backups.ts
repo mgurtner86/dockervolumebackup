@@ -138,8 +138,52 @@ async function performBackup(
   }
 }
 
+router.get('/:id/contents', async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const result = await pool.query(
+      'SELECT backup_path, status FROM backups WHERE id = $1',
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Backup not found' });
+    }
+
+    const backup = result.rows[0];
+
+    if (backup.status !== 'completed') {
+      return res.status(400).json({ error: 'Backup is not completed' });
+    }
+
+    const { stdout } = await execAsync(`tar -tzf ${backup.backup_path}`);
+    const files = stdout
+      .trim()
+      .split('\n')
+      .filter(line => line)
+      .map((line) => {
+        const isDirectory = line.endsWith('/');
+        const cleanPath = line.replace(/\/$/, '');
+        const parts = cleanPath.split('/');
+        const name = parts[parts.length - 1];
+
+        return {
+          name: name || cleanPath,
+          path: cleanPath,
+          isDirectory,
+        };
+      });
+
+    res.json({ files });
+  } catch (error) {
+    console.error('Error listing backup contents:', error);
+    res.status(500).json({ error: 'Failed to list backup contents' });
+  }
+});
+
 router.post('/restore', async (req, res) => {
-  const { backup_id } = req.body;
+  const { backup_id, restore_type, selected_files, custom_path } = req.body;
 
   if (!backup_id) {
     return res.status(400).json({ error: 'backup_id is required' });
@@ -164,7 +208,17 @@ router.post('/restore', async (req, res) => {
       return res.status(400).json({ error: 'Backup is not completed' });
     }
 
-    const command = `tar -xzf ${backup.backup_path} -C ${path.dirname(backup.volume_path)} --overwrite`;
+    const restorePath = custom_path || path.dirname(backup.volume_path);
+    await fs.mkdir(restorePath, { recursive: true });
+
+    let command;
+    if (restore_type === 'selective' && selected_files && selected_files.length > 0) {
+      const fileList = selected_files.join(' ');
+      command = `tar -xzf ${backup.backup_path} -C ${restorePath} ${fileList} --overwrite`;
+    } else {
+      command = `tar -xzf ${backup.backup_path} -C ${restorePath} --overwrite`;
+    }
+
     await execAsync(command);
 
     res.json({ success: true, message: 'Restore completed successfully' });

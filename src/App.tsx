@@ -4,6 +4,7 @@ import { VolumeList } from './components/VolumeList';
 import { BackupList } from './components/BackupList';
 import { ScheduleManager } from './components/ScheduleManager';
 import { Settings } from './components/Settings';
+import { RestoreWizard, RestoreOptions } from './components/RestoreWizard';
 import { Volume, Backup } from './types';
 import { api } from './lib/api';
 
@@ -14,8 +15,8 @@ function App() {
     type: 'success' | 'error';
     message: string;
   } | null>(null);
-  const [showRestoreDialog, setShowRestoreDialog] = useState(false);
-  const [restoreBackup, setRestoreBackup] = useState<Backup | null>(null);
+  const [showRestoreWizard, setShowRestoreWizard] = useState(false);
+  const [selectedBackup, setSelectedBackup] = useState<Backup | null>(null);
 
   const showNotification = (type: 'success' | 'error', message: string) => {
     setNotification({ type, message });
@@ -34,26 +35,38 @@ function App() {
     }
   };
 
-  const handleRestore = (backup: Backup) => {
-    setRestoreBackup(backup);
-    setShowRestoreDialog(true);
+  const handleSelectBackup = (backup: Backup) => {
+    setSelectedBackup(backup);
+    setShowRestoreWizard(true);
   };
 
-  const confirmRestore = async () => {
-    if (!restoreBackup) return;
-
+  const handleRestore = async (backupId: string, options: RestoreOptions) => {
     try {
-      await api.backups.restore(restoreBackup.id.toString());
+      const response = await fetch('/api/backups/restore', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          backup_id: backupId,
+          restore_type: options.restoreType,
+          selected_files: options.selectedFiles,
+          custom_path: options.customPath,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Restore failed');
+      }
+
       showNotification(
         'success',
-        `Restore completed for ${restoreBackup.volumes?.name || 'volume'}`
+        `Restore completed for ${selectedBackup?.volumes?.name || 'volume'}`
       );
     } catch (error) {
       showNotification('error', 'Failed to restore backup');
       console.error('Error restoring backup:', error);
     } finally {
-      setShowRestoreDialog(false);
-      setRestoreBackup(null);
+      setShowRestoreWizard(false);
+      setSelectedBackup(null);
     }
   };
 
@@ -141,7 +154,7 @@ function App() {
                   <BackupList
                     volumeId={selectedVolume.id}
                     onTriggerBackup={handleTriggerBackup}
-                    onRestore={handleRestore}
+                    onSelectBackup={handleSelectBackup}
                   />
 
                   <ScheduleManager volumeId={selectedVolume.id} />
@@ -162,35 +175,15 @@ function App() {
         )}
       </main>
 
-      {showRestoreDialog && restoreBackup && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
-            <h3 className="text-xl font-semibold text-slate-800 mb-4">
-              Confirm Restore
-            </h3>
-            <p className="text-slate-600 mb-6">
-              Are you sure you want to restore the backup from{' '}
-              <span className="font-medium">
-                {new Date(restoreBackup.created_at).toLocaleString()}
-              </span>
-              ? This will overwrite the current volume data.
-            </p>
-            <div className="flex gap-3 justify-end">
-              <button
-                onClick={() => setShowRestoreDialog(false)}
-                className="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmRestore}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                Restore
-              </button>
-            </div>
-          </div>
-        </div>
+      {showRestoreWizard && selectedBackup && (
+        <RestoreWizard
+          backup={selectedBackup}
+          onClose={() => {
+            setShowRestoreWizard(false);
+            setSelectedBackup(null);
+          }}
+          onRestore={handleRestore}
+        />
       )}
     </div>
   );

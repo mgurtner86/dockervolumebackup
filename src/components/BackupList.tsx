@@ -1,15 +1,15 @@
 import { useState, useEffect } from 'react';
-import { Database, Play, RotateCcw, Clock } from 'lucide-react';
+import { Database, Play, Clock } from 'lucide-react';
 import { Backup } from '../types';
 import { api } from '../lib/api';
 
 interface BackupListProps {
   volumeId?: string;
   onTriggerBackup: () => void;
-  onRestore: (backup: Backup) => void;
+  onSelectBackup: (backup: Backup) => void;
 }
 
-export function BackupList({ volumeId, onTriggerBackup, onRestore }: BackupListProps) {
+export function BackupList({ volumeId, onTriggerBackup, onSelectBackup }: BackupListProps) {
   const [backups, setBackups] = useState<Backup[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -81,7 +81,12 @@ export function BackupList({ volumeId, onTriggerBackup, onRestore }: BackupListP
           backups.map((backup) => (
             <div
               key={backup.id}
-              className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+              onClick={() => backup.status === 'completed' && onSelectBackup(backup)}
+              className={`flex items-center justify-between p-4 bg-gray-50 rounded-lg transition-colors ${
+                backup.status === 'completed'
+                  ? 'hover:bg-blue-50 hover:border-blue-300 cursor-pointer border-2 border-transparent'
+                  : 'border-2 border-transparent'
+              }`}
             >
               <div className="flex items-center gap-3 flex-1">
                 <Database className="text-gray-600" size={24} />
@@ -109,17 +114,11 @@ export function BackupList({ volumeId, onTriggerBackup, onRestore }: BackupListP
                   {backup.error_message && (
                     <p className="text-sm text-red-600 mt-1">{backup.error_message}</p>
                   )}
+                  {backup.status === 'completed' && (
+                    <p className="text-xs text-blue-600 mt-1 font-medium">Click to restore</p>
+                  )}
                 </div>
               </div>
-              {backup.status === 'completed' && (
-                <button
-                  onClick={() => onRestore(backup)}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  <RotateCcw size={18} />
-                  Restore
-                </button>
-              )}
             </div>
           ))
         )}
