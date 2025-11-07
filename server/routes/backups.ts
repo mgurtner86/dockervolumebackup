@@ -100,8 +100,17 @@ async function performBackup(
   try {
     await fs.mkdir(path.dirname(backupPath), { recursive: true });
 
-    const command = `tar -czf ${backupPath} -C ${path.dirname(sourcePath)} ${path.basename(sourcePath)}`;
-    await execAsync(command);
+    const command = `tar -czf ${backupPath} -C ${path.dirname(sourcePath)} ${path.basename(sourcePath)} --ignore-failed-read --warning=no-file-changed 2>&1 || [ $? -eq 1 ]`;
+
+    try {
+      await execAsync(command);
+    } catch (error: any) {
+      if (error.code === 1 && error.stderr?.includes('file changed')) {
+        console.log('Backup completed with warnings (file changed during backup) - this is normal for live databases');
+      } else {
+        throw error;
+      }
+    }
 
     const stats = await fs.stat(backupPath);
 

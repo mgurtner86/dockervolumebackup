@@ -67,8 +67,21 @@ export async function ensureCifsMounted(): Promise<string> {
 
 async function checkIfMounted(mountPoint: string): Promise<boolean> {
   try {
-    const { stdout } = await execAsync('mount | grep -w "' + mountPoint + '"');
-    return stdout.trim().length > 0;
+    const { stdout } = await execAsync(`mount`);
+    const lines = stdout.split('\n');
+    const isMounted = lines.some(line => line.includes(` on ${mountPoint} `));
+
+    if (isMounted) {
+      try {
+        await fs.access(mountPoint);
+        const stats = await fs.stat(mountPoint);
+        return stats.isDirectory();
+      } catch {
+        return false;
+      }
+    }
+
+    return false;
   } catch (error) {
     return false;
   }
