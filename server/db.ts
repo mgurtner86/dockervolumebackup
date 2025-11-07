@@ -1,4 +1,5 @@
 import { Pool } from 'pg';
+import bcrypt from 'bcrypt';
 
 const pool = new Pool({
   host: process.env.POSTGRES_HOST || 'postgres',
@@ -77,7 +78,27 @@ export const initDatabase = async () => {
         ('azure_ad_enabled', 'false')
       ON CONFLICT (key) DO NOTHING;
     `);
-    console.log('Database initialized successfully');
+
+    const userCheck = await client.query('SELECT COUNT(*) as count FROM users');
+    const userCount = parseInt(userCheck.rows[0].count);
+
+    if (userCount === 0) {
+      const defaultPassword = 'changeme123';
+      const passwordHash = await bcrypt.hash(defaultPassword, 10);
+
+      await client.query(
+        'INSERT INTO users (username, password_hash, role) VALUES ($1, $2, $3)',
+        ['admin', passwordHash, 'admin']
+      );
+
+      console.log('Database initialized successfully');
+      console.log('Default admin user created:');
+      console.log('  Username: admin');
+      console.log('  Password: changeme123');
+      console.log('  IMPORTANT: Change this password immediately after first login!');
+    } else {
+      console.log('Database initialized successfully');
+    }
   } finally {
     client.release();
   }
