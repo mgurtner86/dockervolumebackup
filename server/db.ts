@@ -50,6 +50,15 @@ export const initDatabase = async () => {
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
 
+      CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        username TEXT UNIQUE NOT NULL,
+        password_hash TEXT NOT NULL,
+        role TEXT NOT NULL DEFAULT 'admin',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
       CREATE INDEX IF NOT EXISTS idx_backups_volume_id ON backups(volume_id);
       CREATE INDEX IF NOT EXISTS idx_backups_status ON backups(status);
       CREATE INDEX IF NOT EXISTS idx_schedules_volume_id ON schedules(volume_id);
@@ -60,7 +69,12 @@ export const initDatabase = async () => {
         ('backup_storage_path', '//server/share'),
         ('cifs_username', ''),
         ('cifs_password', ''),
-        ('cifs_domain', '')
+        ('cifs_domain', ''),
+        ('azure_ad_client_id', ''),
+        ('azure_ad_client_secret', ''),
+        ('azure_ad_tenant_id', ''),
+        ('azure_ad_required_group_id', ''),
+        ('azure_ad_enabled', 'false')
       ON CONFLICT (key) DO NOTHING;
     `);
     console.log('Database initialized successfully');
