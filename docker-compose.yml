@@ -33,6 +33,14 @@ services:
       postgres:
         condition: service_healthy
     restart: unless-stopped
+    privileged: true
+    cap_add:
+      - SYS_ADMIN
+      - DAC_READ_SEARCH
+    security_opt:
+      - apparmor:unconfined
+    devices:
+      - /dev/fuse
 
 volumes:
   backup-storage:
