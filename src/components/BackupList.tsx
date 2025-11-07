@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Database, Play, Clock } from 'lucide-react';
+import { Database, Play, Clock, Trash2 } from 'lucide-react';
 import { Backup } from '../types';
 import { api } from '../lib/api';
 
@@ -7,9 +7,10 @@ interface BackupListProps {
   volumeId?: string;
   onTriggerBackup: () => void;
   onSelectBackup: (backup: Backup) => void;
+  onDeleteBackup: (backupId: string) => void;
 }
 
-export function BackupList({ volumeId, onTriggerBackup, onSelectBackup }: BackupListProps) {
+export function BackupList({ volumeId, onTriggerBackup, onSelectBackup, onDeleteBackup }: BackupListProps) {
   const [backups, setBackups] = useState<Backup[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -81,14 +82,14 @@ export function BackupList({ volumeId, onTriggerBackup, onSelectBackup }: Backup
           backups.map((backup) => (
             <div
               key={backup.id}
-              onClick={() => backup.status === 'completed' && onSelectBackup(backup)}
-              className={`flex items-center justify-between p-4 bg-gray-50 rounded-lg transition-colors ${
-                backup.status === 'completed'
-                  ? 'hover:bg-blue-50 hover:border-blue-300 cursor-pointer border-2 border-transparent'
-                  : 'border-2 border-transparent'
-              }`}
+              className={`flex items-center justify-between p-4 bg-gray-50 rounded-lg transition-colors border-2 border-transparent group`}
             >
-              <div className="flex items-center gap-3 flex-1">
+              <div
+                className={`flex items-center gap-3 flex-1 ${
+                  backup.status === 'completed' ? 'cursor-pointer' : ''
+                }`}
+                onClick={() => backup.status === 'completed' && onSelectBackup(backup)}
+              >
                 <Database className="text-gray-600" size={24} />
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
@@ -119,6 +120,16 @@ export function BackupList({ volumeId, onTriggerBackup, onSelectBackup }: Backup
                   )}
                 </div>
               </div>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDeleteBackup(backup.id.toString());
+                }}
+                className="flex items-center gap-2 px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                title="Delete backup"
+              >
+                <Trash2 size={18} />
+              </button>
             </div>
           ))
         )}

@@ -42,6 +42,8 @@ export const api = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ backup_id: backupId }),
       }).then((r) => r.json()),
+    delete: (backupId: string) =>
+      fetch(buildUrl(`/backups/${backupId}`), { method: 'DELETE' }).then((r) => r.json()),
   },
   schedules: {
     getAll: () => fetch(buildUrl('/schedules')).then((r) => r.json()),

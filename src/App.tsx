@@ -70,6 +70,20 @@ function App() {
     }
   };
 
+  const handleDeleteBackup = async (backupId: string) => {
+    if (!confirm('Are you sure you want to delete this backup? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      await api.backups.delete(backupId);
+      showNotification('success', 'Backup deleted successfully');
+    } catch (error) {
+      showNotification('error', 'Failed to delete backup');
+      console.error('Error deleting backup:', error);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
       <header className="bg-white shadow-sm border-b border-slate-200">
@@ -155,6 +169,7 @@ function App() {
                     volumeId={selectedVolume.id}
                     onTriggerBackup={handleTriggerBackup}
                     onSelectBackup={handleSelectBackup}
+                    onDeleteBackup={handleDeleteBackup}
                   />
 
                   <ScheduleManager volumeId={selectedVolume.id} />

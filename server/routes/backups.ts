@@ -228,6 +228,37 @@ router.post('/restore', async (req, res) => {
   }
 });
 
+router.delete('/:id', async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const result = await pool.query(
+      'SELECT backup_path FROM backups WHERE id = $1',
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Backup not found' });
+    }
+
+    const backupPath = result.rows[0].backup_path;
+
+    try {
+      await fs.unlink(backupPath);
+      console.log(`Deleted backup file: ${backupPath}`);
+    } catch (error) {
+      console.error('Error deleting backup file:', error);
+    }
+
+    await pool.query('DELETE FROM backups WHERE id = $1', [id]);
+
+    res.json({ success: true, message: 'Backup deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting backup:', error);
+    res.status(500).json({ error: 'Failed to delete backup' });
+  }
+});
+
 router.get('/browse', async (req, res) => {
   const subPath = req.query.path as string || '';
 

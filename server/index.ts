@@ -6,6 +6,7 @@ import backupsRouter from './routes/backups.js';
 import schedulesRouter from './routes/schedules.js';
 import settingsRouter from './routes/settings.js';
 import { mountCifsAtStartup } from './utils/cifs-mount.js';
+import { startBackupSync, syncOrphanedBackups } from './utils/backup-sync.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -26,6 +27,8 @@ const startServer = async () => {
   try {
     await initDatabase();
     await mountCifsAtStartup();
+    await syncOrphanedBackups();
+    startBackupSync();
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
     });
