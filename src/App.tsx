@@ -3,7 +3,6 @@ import { Server, AlertCircle, Settings as SettingsIcon, Home } from 'lucide-reac
 import { VolumeList } from './components/VolumeList';
 import { BackupList } from './components/BackupList';
 import { ScheduleManager } from './components/ScheduleManager';
-import { FileBrowser } from './components/FileBrowser';
 import { Settings } from './components/Settings';
 import { Volume, Backup } from './types';
 import { api } from './lib/api';
@@ -138,8 +137,6 @@ function App() {
                       {selectedVolume.name} - {selectedVolume.path}
                     </p>
                   </div>
-
-                  <FileBrowser volumeId={selectedVolume.id} />
 
                   <BackupList
                     volumeId={selectedVolume.id}
