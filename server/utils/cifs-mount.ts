@@ -23,8 +23,11 @@ export async function ensureCifsMounted(): Promise<string> {
   const isMounted = await checkIfMounted(MOUNT_BASE);
 
   if (isMounted) {
+    console.log(`CIFS share already mounted at ${MOUNT_BASE}`);
     return MOUNT_BASE;
   }
+
+  console.log(`Attempting to mount CIFS share to ${MOUNT_BASE}...`);
 
   let mountOptions = 'rw';
 
@@ -46,17 +49,27 @@ export async function ensureCifsMounted(): Promise<string> {
     console.log(`Successfully mounted CIFS share ${backupPath} to ${MOUNT_BASE}`);
     return MOUNT_BASE;
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+    if (errorMessage.includes('Resource busy') || errorMessage.includes('already mounted')) {
+      console.log('CIFS share is already mounted, verifying...');
+      const stillMounted = await checkIfMounted(MOUNT_BASE);
+      if (stillMounted) {
+        console.log('Confirmed: CIFS share is mounted and accessible');
+        return MOUNT_BASE;
+      }
+    }
+
     console.error('Failed to mount CIFS share:', error);
-    throw new Error(`Failed to mount network storage: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    throw new Error(`Failed to mount network storage: ${errorMessage}`);
   }
 }
 
 async function checkIfMounted(mountPoint: string): Promise<boolean> {
   try {
-    const { stdout } = await execAsync('mount');
-    return stdout.includes(mountPoint);
+    const { stdout } = await execAsync('mount | grep -w "' + mountPoint + '"');
+    return stdout.trim().length > 0;
   } catch (error) {
-    console.error('Error checking mount status:', error);
     return false;
   }
 }
