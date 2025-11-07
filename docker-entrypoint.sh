@@ -13,4 +13,4 @@ nginx
 
 # Start the application
 cd /app
-node server/index.js
+node dist/server/index.js

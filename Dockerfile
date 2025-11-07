@@ -17,7 +17,7 @@ RUN apk add --no-cache docker-cli bash tar gzip nginx cifs-utils kmod
 WORKDIR /app
 
 COPY --from=builder /app/dist/client /usr/share/nginx/html
-COPY --from=builder /app/dist/server ./server
+COPY --from=builder /app/dist/server ./dist/server
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./
 
