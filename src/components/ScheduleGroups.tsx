@@ -514,16 +514,6 @@ function RunsModal({ runs, onClose }: RunsModalProps) {
           )}
         </div>
       </div>
-
-      <ConfirmDialog
-        isOpen={deleteConfirm.isOpen}
-        title="Delete Schedule Group"
-        message={`Are you sure you want to delete "${deleteConfirm.groupName}"? This will remove the schedule group but not the volumes or their backups.`}
-        confirmLabel="Delete"
-        onConfirm={handleDeleteGroup}
-        onCancel={() => setDeleteConfirm({ isOpen: false })}
-        danger
-      />
     </div>
   );
 }
