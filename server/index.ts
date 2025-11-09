@@ -5,6 +5,7 @@ import { initDatabase } from './db.js';
 import volumesRouter from './routes/volumes.js';
 import backupsRouter from './routes/backups.js';
 import schedulesRouter from './routes/schedules.js';
+import scheduleGroupsRouter from './routes/schedule-groups.js';
 import settingsRouter from './routes/settings.js';
 import authRouter from './routes/auth.js';
 import { mountCifsAtStartup } from './utils/cifs-mount.js';
@@ -34,6 +35,7 @@ app.use('/auth', authRouter);
 app.use('/api/volumes', authMiddleware, volumesRouter);
 app.use('/api/backups', authMiddleware, backupsRouter);
 app.use('/api/schedules', authMiddleware, schedulesRouter);
+app.use('/api/schedule-groups', authMiddleware, scheduleGroupsRouter);
 app.use('/api/settings', authMiddleware, settingsRouter);
 
 app.get('/health', (req, res) => {

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Server, AlertCircle, Settings as SettingsIcon, Home, LogOut, LayoutDashboard, Moon, Sun } from 'lucide-react';
+import { Server, AlertCircle, Settings as SettingsIcon, Home, LogOut, LayoutDashboard, Moon, Sun, Calendar } from 'lucide-react';
 import { useTheme } from './contexts/ThemeContext';
 import { VolumeList } from './components/VolumeList';
 import { BackupList } from './components/BackupList';
@@ -7,6 +7,7 @@ import { ScheduleManager } from './components/ScheduleManager';
 import { Settings } from './components/Settings';
 import { RestoreWizard, RestoreOptions } from './components/RestoreWizard';
 import { Dashboard } from './components/Dashboard';
+import { ScheduleGroups } from './components/ScheduleGroups';
 import { useAuth } from './components/AuthProvider';
 import { Volume, Backup } from './types';
 import { api } from './lib/api';
@@ -14,7 +15,7 @@ import { api } from './lib/api';
 function App() {
   const { user, logout, isLocalAdmin } = useAuth();
   const { isDark, toggleTheme } = useTheme();
-  const [currentPage, setCurrentPage] = useState<'home' | 'settings' | 'dashboard'>('dashboard');
+  const [currentPage, setCurrentPage] = useState<'home' | 'settings' | 'dashboard' | 'schedules'>('dashboard');
   const [selectedVolume, setSelectedVolume] = useState<Volume | undefined>();
   const [notification, setNotification] = useState<{
     type: 'success' | 'error';
@@ -141,13 +142,24 @@ function App() {
                 <Home size={20} />
                 Volumes
               </button>
+              <button
+                onClick={() => setCurrentPage('schedules')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                  currentPage === 'schedules'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600'
+                }`}
+              >
+                <Calendar size={20} />
+                Schedules
+              </button>
               {isLocalAdmin && (
                 <button
                   onClick={() => setCurrentPage('settings')}
                   className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
                     currentPage === 'settings'
                       ? 'bg-blue-600 text-white'
-                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                      : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600'
                   }`}
                 >
                   <SettingsIcon size={20} />
@@ -188,6 +200,8 @@ function App() {
             setSelectedVolume(volume);
             setCurrentPage('home');
           }} />
+        ) : currentPage === 'schedules' ? (
+          <ScheduleGroups />
         ) : currentPage === 'settings' ? (
           <Settings />
         ) : (

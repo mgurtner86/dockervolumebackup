@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { BarChart3, HardDrive, Database, CheckCircle, XCircle, Clock, TrendingUp } from 'lucide-react';
+import { BarChart3, HardDrive, Database, CheckCircle, XCircle, Clock, TrendingUp, Calendar, Play, Pause } from 'lucide-react';
 import { api } from '../lib/api';
-import { Volume, Backup } from '../types';
+import { Volume, Backup, ScheduleGroup, ScheduleGroupRun } from '../types';
 
 interface DashboardProps {
   onSelectVolume?: (volume: Volume) => void;
@@ -26,6 +26,8 @@ interface BackupStats {
 export function Dashboard({ onSelectVolume }: DashboardProps) {
   const [volumes, setVolumes] = useState<Volume[]>([]);
   const [backups, setBackups] = useState<Backup[]>([]);
+  const [scheduleGroups, setScheduleGroups] = useState<ScheduleGroup[]>([]);
+  const [groupRuns, setGroupRuns] = useState<Record<string, ScheduleGroupRun[]>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -36,12 +38,28 @@ export function Dashboard({ onSelectVolume }: DashboardProps) {
 
   const fetchData = async () => {
     try {
-      const [volumesData, backupsData] = await Promise.all([
+      const [volumesData, backupsData, groupsData] = await Promise.all([
         api.volumes.getAll(),
         api.backups.getAll(),
+        api.scheduleGroups.getAll(),
       ]);
       setVolumes(volumesData);
       setBackups(backupsData);
+      setScheduleGroups(groupsData);
+
+      const runsData: Record<string, ScheduleGroupRun[]> = {};
+      await Promise.all(
+        groupsData.map(async (group: ScheduleGroup) => {
+          try {
+            const runs = await api.scheduleGroups.getRuns(group.id);
+            runsData[group.id] = runs.slice(0, 1);
+          } catch (error) {
+            console.error(`Error fetching runs for group ${group.id}:`, error);
+            runsData[group.id] = [];
+          }
+        })
+      );
+      setGroupRuns(runsData);
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
@@ -333,6 +351,106 @@ export function Dashboard({ onSelectVolume }: DashboardProps) {
             </div>
           )}
         </div>
+      </div>
+
+      <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-6">
+        <div className="flex items-center gap-3 mb-6">
+          <Calendar className="text-blue-600 dark:text-blue-400" size={24} />
+          <h2 className="text-xl font-semibold text-slate-800 dark:text-white">Schedule Groups Status</h2>
+        </div>
+        {scheduleGroups.length === 0 ? (
+          <div className="text-center py-8 text-slate-500 dark:text-slate-400">
+            No schedule groups configured
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {scheduleGroups.map((group) => {
+              const latestRun = groupRuns[group.id]?.[0];
+              return (
+                <div
+                  key={group.id}
+                  className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg hover:shadow-md transition-shadow"
+                >
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-1">
+                        <h3 className="font-semibold text-slate-800 dark:text-white">{group.name}</h3>
+                        <span
+                          className={`px-2 py-1 text-xs font-medium rounded ${
+                            group.enabled
+                              ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+                              : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400'
+                          }`}
+                        >
+                          {group.enabled ? 'Active' : 'Inactive'}
+                        </span>
+                      </div>
+                      {group.description && (
+                        <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">{group.description}</p>
+                      )}
+                      <div className="flex items-center gap-4 text-sm">
+                        <span className="text-slate-600 dark:text-slate-400">
+                          {group.volumes.length} volumes
+                        </span>
+                        {group.last_run && (
+                          <span className="text-slate-600 dark:text-slate-400">
+                            Last run: {new Date(group.last_run).toLocaleString()}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    {latestRun && (
+                      <div className="ml-4">
+                        {latestRun.status === 'in_progress' ? (
+                          <div className="flex items-center gap-2">
+                            <Play className="text-blue-600 dark:text-blue-400 animate-pulse" size={20} />
+                            <div className="text-right">
+                              <div className="text-sm font-medium text-blue-600 dark:text-blue-400">In Progress</div>
+                              <div className="text-xs text-slate-600 dark:text-slate-400">
+                                {latestRun.current_volume_index} / {latestRun.total_volumes}
+                              </div>
+                            </div>
+                          </div>
+                        ) : latestRun.status === 'completed' ? (
+                          <div className="flex items-center gap-2">
+                            <CheckCircle className="text-green-600 dark:text-green-400" size={20} />
+                            <span className="text-sm font-medium text-green-600 dark:text-green-400">Completed</span>
+                          </div>
+                        ) : latestRun.status === 'failed' ? (
+                          <div className="flex items-center gap-2">
+                            <XCircle className="text-red-600 dark:text-red-400" size={20} />
+                            <span className="text-sm font-medium text-red-600 dark:text-red-400">Failed</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <Pause className="text-slate-400" size={20} />
+                            <span className="text-sm font-medium text-slate-600 dark:text-slate-400">Pending</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  {latestRun?.status === 'in_progress' && (
+                    <div className="mt-3">
+                      <div className="flex justify-between text-xs text-slate-600 dark:text-slate-400 mb-1">
+                        <span>Progress</span>
+                        <span>{Math.round((latestRun.current_volume_index / latestRun.total_volumes) * 100)}%</span>
+                      </div>
+                      <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
+                        <div
+                          className="bg-blue-600 dark:bg-blue-400 h-2 rounded-full transition-all duration-500"
+                          style={{
+                            width: `${(latestRun.current_volume_index / latestRun.total_volumes) * 100}%`,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );

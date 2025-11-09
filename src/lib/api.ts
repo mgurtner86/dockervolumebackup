@@ -71,4 +71,29 @@ export const api = {
         body: JSON.stringify({ settings }),
       }).then((r) => r.json()),
   },
+  scheduleGroups: {
+    getAll: () => fetch(buildUrl('/schedule-groups')).then((r) => r.json()),
+    get: (id: string) => fetch(buildUrl(`/schedule-groups/${id}`)).then((r) => r.json()),
+    create: (data: { name: string; description?: string; cron_expression: string; volume_ids: string[] }) =>
+      fetch(buildUrl('/schedule-groups'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      }).then((r) => r.json()),
+    update: (id: string, data: { name?: string; description?: string; cron_expression?: string; enabled?: boolean; volume_ids?: string[] }) =>
+      fetch(buildUrl(`/schedule-groups/${id}`), {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      }).then((r) => r.json()),
+    delete: (id: string) =>
+      fetch(buildUrl(`/schedule-groups/${id}`), { method: 'DELETE' }).then((r) => r.json()),
+    getRuns: (id: string) =>
+      fetch(buildUrl(`/schedule-groups/${id}/runs`)).then((r) => r.json()),
+    triggerRun: (id: string) =>
+      fetch(buildUrl(`/schedule-groups/${id}/run`), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      }).then((r) => r.json()),
+  },
 };

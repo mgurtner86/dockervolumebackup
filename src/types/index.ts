@@ -36,3 +36,36 @@ export interface Schedule {
     path: string;
   };
 }
+
+export interface ScheduleGroupVolume {
+  id: string;
+  volume_id: string;
+  volume_name: string;
+  volume_path: string;
+  execution_order: number;
+}
+
+export interface ScheduleGroup {
+  id: string;
+  name: string;
+  description: string;
+  cron_expression: string;
+  enabled: boolean;
+  last_run?: string;
+  next_run?: string;
+  created_at: string;
+  updated_at: string;
+  volumes: ScheduleGroupVolume[];
+}
+
+export interface ScheduleGroupRun {
+  id: string;
+  group_id: string;
+  status: 'pending' | 'in_progress' | 'completed' | 'failed';
+  current_volume_index: number;
+  total_volumes: number;
+  started_at?: string;
+  completed_at?: string;
+  error_message?: string;
+  created_at: string;
+}
