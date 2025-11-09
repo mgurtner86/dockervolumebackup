@@ -184,7 +184,10 @@ function App() {
 
       <main className="max-w-7xl mx-auto px-6 py-8">
         {currentPage === 'dashboard' ? (
-          <Dashboard />
+          <Dashboard onSelectVolume={(volume) => {
+            setSelectedVolume(volume);
+            setCurrentPage('home');
+          }} />
         ) : currentPage === 'settings' ? (
           <Settings />
         ) : (

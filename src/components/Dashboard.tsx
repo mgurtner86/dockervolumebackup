@@ -3,6 +3,10 @@ import { BarChart3, HardDrive, Database, CheckCircle, XCircle, Clock, TrendingUp
 import { api } from '../lib/api';
 import { Volume, Backup } from '../types';
 
+interface DashboardProps {
+  onSelectVolume?: (volume: Volume) => void;
+}
+
 interface BackupStats {
   totalBackups: number;
   completedBackups: number;
@@ -11,6 +15,7 @@ interface BackupStats {
   totalSize: number;
   volumeStats: Array<{
     volumeName: string;
+    volumeId: string;
     backupCount: number;
     latestBackup?: string;
     totalSize: number;
@@ -18,7 +23,7 @@ interface BackupStats {
   }>;
 }
 
-export function Dashboard() {
+export function Dashboard({ onSelectVolume }: DashboardProps) {
   const [volumes, setVolumes] = useState<Volume[]>([]);
   const [backups, setBackups] = useState<Backup[]>([]);
   const [loading, setLoading] = useState(true);
@@ -67,6 +72,7 @@ export function Dashboard() {
 
       return {
         volumeName: volume.name,
+        volumeId: volume.id,
         backupCount: volumeBackups.length,
         latestBackup: latestBackup?.created_at,
         totalSize: volumeBackups.reduce((sum, b) => sum + (b.size_bytes || 0), 0),
@@ -264,10 +270,15 @@ export function Dashboard() {
           <h2 className="text-xl font-semibold text-slate-800 dark:text-white">Volume Health</h2>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {stats.volumeStats.map((volumeStat) => (
+          {stats.volumeStats.map((volumeStat) => {
+            const volume = volumes.find((v) => v.id === volumeStat.volumeId);
+            return (
             <div
               key={volumeStat.volumeName}
-              className="p-4 bg-slate-50 dark:bg-slate-700 rounded-lg border-l-4"
+              onClick={() => volume && onSelectVolume && onSelectVolume(volume)}
+              className={`p-4 bg-slate-50 dark:bg-slate-700 rounded-lg border-l-4 transition-all ${
+                onSelectVolume ? 'cursor-pointer hover:shadow-lg hover:scale-105' : ''
+              }`}
               style={{
                 borderColor:
                   volumeStat.status === 'healthy'
@@ -314,7 +325,8 @@ export function Dashboard() {
                 </div>
               </div>
             </div>
-          ))}
+          );
+          })}
           {stats.volumeStats.length === 0 && (
             <div className="col-span-full text-center py-8 text-slate-500 dark:text-slate-400">
               No volumes configured yet
