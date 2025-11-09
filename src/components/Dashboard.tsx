@@ -43,25 +43,30 @@ export function Dashboard({ onSelectVolume }: DashboardProps) {
         api.backups.getAll(),
         api.scheduleGroups.getAll(),
       ]);
-      setVolumes(volumesData);
-      setBackups(backupsData);
-      setScheduleGroups(groupsData);
+      setVolumes(Array.isArray(volumesData) ? volumesData : []);
+      setBackups(Array.isArray(backupsData) ? backupsData : []);
+      setScheduleGroups(Array.isArray(groupsData) ? groupsData : []);
 
-      const runsData: Record<string, ScheduleGroupRun[]> = {};
-      await Promise.all(
-        groupsData.map(async (group: ScheduleGroup) => {
-          try {
-            const runs = await api.scheduleGroups.getRuns(group.id);
-            runsData[group.id] = runs.slice(0, 1);
-          } catch (error) {
-            console.error(`Error fetching runs for group ${group.id}:`, error);
-            runsData[group.id] = [];
-          }
-        })
-      );
-      setGroupRuns(runsData);
+      if (Array.isArray(groupsData) && groupsData.length > 0) {
+        const runsData: Record<string, ScheduleGroupRun[]> = {};
+        await Promise.all(
+          groupsData.map(async (group: ScheduleGroup) => {
+            try {
+              const runs = await api.scheduleGroups.getRuns(group.id);
+              runsData[group.id] = Array.isArray(runs) ? runs.slice(0, 1) : [];
+            } catch (error) {
+              console.error(`Error fetching runs for group ${group.id}:`, error);
+              runsData[group.id] = [];
+            }
+          })
+        );
+        setGroupRuns(runsData);
+      }
     } catch (error) {
       console.error('Error fetching data:', error);
+      setVolumes([]);
+      setBackups([]);
+      setScheduleGroups([]);
     } finally {
       setLoading(false);
     }

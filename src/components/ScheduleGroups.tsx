@@ -23,10 +23,12 @@ export function ScheduleGroups() {
         api.scheduleGroups.getAll(),
         api.volumes.getAll(),
       ]);
-      setScheduleGroups(groupsData);
-      setVolumes(volumesData);
+      setScheduleGroups(Array.isArray(groupsData) ? groupsData : []);
+      setVolumes(Array.isArray(volumesData) ? volumesData : []);
     } catch (error) {
       console.error('Error fetching data:', error);
+      setScheduleGroups([]);
+      setVolumes([]);
     } finally {
       setLoading(false);
     }
