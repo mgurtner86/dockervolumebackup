@@ -12,7 +12,7 @@ RUN npm run build
 
 FROM node:18-alpine
 
-RUN apk add --no-cache docker-cli bash tar gzip nginx cifs-utils kmod
+RUN apk add --no-cache docker-cli bash tar gzip nginx cifs-utils kmod certbot certbot-nginx
 
 WORKDIR /app
 
