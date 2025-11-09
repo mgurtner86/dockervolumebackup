@@ -49,7 +49,7 @@ export function UserMenu({ onLogout }: UserMenuProps) {
     }
 
     try {
-      const response = await fetch('/api/auth/change-password', {
+      const response = await fetch('/auth/change-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
