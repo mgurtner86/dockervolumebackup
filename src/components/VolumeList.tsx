@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { HardDrive, Trash2, Plus } from 'lucide-react';
 import { Volume } from '../types';
 import { api } from '../lib/api';
+import { ConfirmDialog } from './ConfirmDialog';
 
 interface VolumeListProps {
   onSelectVolume: (volume: Volume) => void;
@@ -13,6 +14,9 @@ export function VolumeList({ onSelectVolume, selectedVolumeId }: VolumeListProps
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
   const [newVolume, setNewVolume] = useState({ name: '', path: '' });
+  const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; volumeId?: string; volumeName?: string }>({
+    isOpen: false,
+  });
 
   useEffect(() => {
     fetchVolumes();
@@ -41,12 +45,13 @@ export function VolumeList({ onSelectVolume, selectedVolumeId }: VolumeListProps
     }
   };
 
-  const handleDeleteVolume = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this volume?')) return;
+  const handleDeleteVolume = async () => {
+    if (!deleteConfirm.volumeId) return;
 
     try {
-      await api.volumes.delete(id);
-      setVolumes(volumes.filter(v => v.id !== id));
+      await api.volumes.delete(deleteConfirm.volumeId);
+      setVolumes(volumes.filter(v => v.id !== deleteConfirm.volumeId));
+      setDeleteConfirm({ isOpen: false });
     } catch (error) {
       console.error('Error deleting volume:', error);
     }
@@ -139,7 +144,7 @@ export function VolumeList({ onSelectVolume, selectedVolumeId }: VolumeListProps
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleDeleteVolume(volume.id);
+                  setDeleteConfirm({ isOpen: true, volumeId: volume.id, volumeName: volume.name });
                 }}
                 className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors flex-shrink-0"
               >
@@ -149,6 +154,16 @@ export function VolumeList({ onSelectVolume, selectedVolumeId }: VolumeListProps
           ))
         )}
       </div>
+
+      <ConfirmDialog
+        isOpen={deleteConfirm.isOpen}
+        title="Delete Volume"
+        message={`Are you sure you want to delete "${deleteConfirm.volumeName}"? This action cannot be undone.`}
+        confirmLabel="Delete"
+        onConfirm={handleDeleteVolume}
+        onCancel={() => setDeleteConfirm({ isOpen: false })}
+        danger
+      />
     </div>
   );
 }

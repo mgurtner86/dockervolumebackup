@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Calendar, Plus, Trash2, Power, PowerOff, Clock, CheckCircle, XCircle, Play } from 'lucide-react';
 import { api } from '../lib/api';
 import { Volume, ScheduleGroup, ScheduleGroupRun } from '../types';
+import { ConfirmDialog } from './ConfirmDialog';
 
 export function ScheduleGroups() {
   const [scheduleGroups, setScheduleGroups] = useState<ScheduleGroup[]>([]);
@@ -10,6 +11,9 @@ export function ScheduleGroups() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingGroup, setEditingGroup] = useState<ScheduleGroup | null>(null);
   const [selectedGroupRuns, setSelectedGroupRuns] = useState<{ groupId: string; runs: ScheduleGroupRun[] } | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; groupId?: string; groupName?: string }>({
+    isOpen: false,
+  });
 
   useEffect(() => {
     fetchData();
@@ -43,11 +47,12 @@ export function ScheduleGroups() {
     }
   };
 
-  const handleDeleteGroup = async (groupId: string) => {
-    if (!confirm('Are you sure you want to delete this schedule group?')) return;
+  const handleDeleteGroup = async () => {
+    if (!deleteConfirm.groupId) return;
 
     try {
-      await api.scheduleGroups.delete(groupId);
+      await api.scheduleGroups.delete(deleteConfirm.groupId);
+      setDeleteConfirm({ isOpen: false });
       await fetchData();
     } catch (error) {
       console.error('Error deleting group:', error);
@@ -204,7 +209,7 @@ export function ScheduleGroups() {
                       {group.enabled ? <Power size={18} /> : <PowerOff size={18} />}
                     </button>
                     <button
-                      onClick={() => handleDeleteGroup(group.id)}
+                      onClick={() => setDeleteConfirm({ isOpen: true, groupId: group.id, groupName: group.name })}
                       className="p-2 text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20 rounded-lg transition-colors"
                       title="Delete"
                     >
@@ -509,6 +514,16 @@ function RunsModal({ runs, onClose }: RunsModalProps) {
           )}
         </div>
       </div>
+
+      <ConfirmDialog
+        isOpen={deleteConfirm.isOpen}
+        title="Delete Schedule Group"
+        message={`Are you sure you want to delete "${deleteConfirm.groupName}"? This will remove the schedule group but not the volumes or their backups.`}
+        confirmLabel="Delete"
+        onConfirm={handleDeleteGroup}
+        onCancel={() => setDeleteConfirm({ isOpen: false })}
+        danger
+      />
     </div>
   );
 }

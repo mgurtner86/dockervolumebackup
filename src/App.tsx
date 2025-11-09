@@ -7,6 +7,7 @@ import { Settings } from './components/Settings';
 import { Dashboard } from './components/Dashboard';
 import { ScheduleGroups } from './components/ScheduleGroups';
 import { RestorePage } from './components/RestorePage';
+import { ConfirmDialog } from './components/ConfirmDialog';
 import { useAuth } from './components/AuthProvider';
 import { Volume, Backup } from './types';
 import { api } from './lib/api';
@@ -20,6 +21,9 @@ function App() {
     type: 'success' | 'error';
     message: string;
   } | null>(null);
+  const [deleteBackupConfirm, setDeleteBackupConfirm] = useState<{ isOpen: boolean; backupId?: string }>({
+    isOpen: false,
+  });
 
   const showNotification = (type: 'success' | 'error', message: string) => {
     setNotification({ type, message });
@@ -43,14 +47,13 @@ function App() {
     setCurrentPage('dashboard');
   };
 
-  const handleDeleteBackup = async (backupId: string) => {
-    if (!confirm('Are you sure you want to delete this backup? This action cannot be undone.')) {
-      return;
-    }
+  const handleDeleteBackup = async () => {
+    if (!deleteBackupConfirm.backupId) return;
 
     try {
-      await api.backups.delete(backupId);
+      await api.backups.delete(deleteBackupConfirm.backupId);
       showNotification('success', 'Backup deleted successfully');
+      setDeleteBackupConfirm({ isOpen: false });
     } catch (error) {
       showNotification('error', 'Failed to delete backup');
       console.error('Error deleting backup:', error);
@@ -206,7 +209,7 @@ function App() {
                   <BackupList
                     volumeId={selectedVolume.id}
                     onTriggerBackup={handleTriggerBackup}
-                    onDeleteBackup={handleDeleteBackup}
+                    onDeleteBackup={(backupId) => setDeleteBackupConfirm({ isOpen: true, backupId })}
                   />
                 </>
               ) : (
@@ -224,6 +227,16 @@ function App() {
           </div>
         )}
       </main>
+
+      <ConfirmDialog
+        isOpen={deleteBackupConfirm.isOpen}
+        title="Delete Backup"
+        message="Are you sure you want to delete this backup? This action cannot be undone."
+        confirmLabel="Delete"
+        onConfirm={handleDeleteBackup}
+        onCancel={() => setDeleteBackupConfirm({ isOpen: false })}
+        danger
+      />
     </div>
   );
 }
