@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Server, AlertCircle, Settings as SettingsIcon, Home, LayoutDashboard, Moon, Sun, Calendar, RotateCcw } from 'lucide-react';
+import { Server, AlertCircle, Settings as SettingsIcon, Home, LayoutDashboard, Moon, Sun, Calendar, RotateCcw, FileText } from 'lucide-react';
 import { useTheme } from './contexts/ThemeContext';
 import { VolumeList } from './components/VolumeList';
 import { BackupList } from './components/BackupList';
@@ -7,6 +7,7 @@ import { Settings } from './components/Settings';
 import { Dashboard } from './components/Dashboard';
 import { ScheduleGroups } from './components/ScheduleGroups';
 import { RestorePage } from './components/RestorePage';
+import { Logs } from './components/Logs';
 import { ConfirmDialog } from './components/ConfirmDialog';
 import { UserMenu } from './components/UserMenu';
 import { useAuth } from './components/AuthProvider';
@@ -16,7 +17,7 @@ import { api } from './lib/api';
 function App() {
   const { user, logout, isLocalAdmin } = useAuth();
   const { isDark, toggleTheme } = useTheme();
-  const [currentPage, setCurrentPage] = useState<'home' | 'settings' | 'dashboard' | 'schedules' | 'restore'>('dashboard');
+  const [currentPage, setCurrentPage] = useState<'home' | 'settings' | 'dashboard' | 'schedules' | 'restore' | 'logs'>('dashboard');
   const [selectedVolume, setSelectedVolume] = useState<Volume | undefined>();
   const [notification, setNotification] = useState<{
     type: 'success' | 'error';
@@ -129,6 +130,17 @@ function App() {
                 <RotateCcw size={20} />
                 Restore
               </button>
+              <button
+                onClick={() => setCurrentPage('logs')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                  currentPage === 'logs'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600'
+                }`}
+              >
+                <FileText size={20} />
+                Logs
+              </button>
               {isLocalAdmin && (
                 <button
                   onClick={() => setCurrentPage('settings')}
@@ -174,6 +186,8 @@ function App() {
           <ScheduleGroups />
         ) : currentPage === 'restore' ? (
           <RestorePage onRestoreStart={handleRestoreStart} />
+        ) : currentPage === 'logs' ? (
+          <Logs />
         ) : currentPage === 'settings' ? (
           <Settings />
         ) : (

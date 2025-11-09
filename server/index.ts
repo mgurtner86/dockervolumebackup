@@ -8,6 +8,7 @@ import schedulesRouter from './routes/schedules.js';
 import scheduleGroupsRouter from './routes/schedule-groups.js';
 import settingsRouter from './routes/settings.js';
 import authRouter from './routes/auth.js';
+import logsRouter from './routes/logs.js';
 import { mountCifsAtStartup } from './utils/cifs-mount.js';
 import { startBackupSync, syncOrphanedBackups } from './utils/backup-sync.js';
 import { authMiddleware } from './auth.js';
@@ -37,6 +38,7 @@ app.use('/api/backups', authMiddleware, backupsRouter);
 app.use('/api/schedules', authMiddleware, schedulesRouter);
 app.use('/api/schedule-groups', authMiddleware, scheduleGroupsRouter);
 app.use('/api/settings', authMiddleware, settingsRouter);
+app.use('/api/logs', authMiddleware, logsRouter);
 
 app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
