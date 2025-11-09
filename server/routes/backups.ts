@@ -113,13 +113,18 @@ async function performBackup(
   try {
     await fs.mkdir(path.dirname(backupPath), { recursive: true });
 
-    const command = `tar -czf ${backupPath} -C ${path.dirname(sourcePath)} ${path.basename(sourcePath)} --ignore-failed-read --warning=no-file-changed 2>&1 || [ $? -eq 1 ]`;
+    const command = `tar -czf "${backupPath}" -C "${path.dirname(sourcePath)}" "${path.basename(sourcePath)}" --warning=no-file-changed --warning=no-file-removed 2>&1`;
 
     try {
       await execAsync(command);
     } catch (error: any) {
-      if (error.code === 1 && error.stderr?.includes('file changed')) {
-        console.log('Backup completed with warnings (file changed during backup) - this is normal for live databases');
+      if (error.code === 1) {
+        const stderr = error.stderr || '';
+        if (stderr.includes('file changed as we read it') || stderr.includes('file removed before we read it')) {
+          console.log(`Backup completed with warnings (files changed during backup) - this is normal for live databases`);
+        } else {
+          throw error;
+        }
       } else {
         throw error;
       }
