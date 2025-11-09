@@ -14,7 +14,7 @@ import { api } from './lib/api';
 function App() {
   const { user, logout, isLocalAdmin } = useAuth();
   const { isDark, toggleTheme } = useTheme();
-  const [currentPage, setCurrentPage] = useState<'home' | 'settings' | 'dashboard'>('home');
+  const [currentPage, setCurrentPage] = useState<'home' | 'settings' | 'dashboard'>('dashboard');
   const [selectedVolume, setSelectedVolume] = useState<Volume | undefined>();
   const [notification, setNotification] = useState<{
     type: 'success' | 'error';
