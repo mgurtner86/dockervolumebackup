@@ -2,14 +2,17 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
 import { AuthProvider, useAuth } from './components/AuthProvider.tsx';
+import { ThemeProvider } from './contexts/ThemeContext.tsx';
 import { Login } from './components/Login.tsx';
 import './index.css';
 
 function Root() {
   return (
-    <AuthProvider>
-      <AuthGuard />
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <AuthGuard />
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
 

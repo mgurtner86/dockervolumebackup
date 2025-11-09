@@ -4,6 +4,9 @@ interface User {
   id: string;
   name: string;
   email: string;
+  authType?: 'local' | 'entra';
+  role?: string;
+  username?: string;
 }
 
 interface AuthContextType {
@@ -11,6 +14,7 @@ interface AuthContextType {
   loading: boolean;
   login: () => void;
   logout: () => void;
+  isLocalAdmin: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -71,8 +75,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const isLocalAdmin = user?.authType === 'local' && user?.role === 'admin';
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, isLocalAdmin }}>
       {children}
     </AuthContext.Provider>
   );
