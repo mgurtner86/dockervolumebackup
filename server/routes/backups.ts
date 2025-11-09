@@ -6,6 +6,7 @@ import path from 'path';
 import { promises as fs } from 'fs';
 import { getBackupStoragePath } from '../utils/cifs-mount.js';
 import { sendBackupFailureEmail, sendRestoreCompleteEmail } from '../utils/email-service.js';
+import { log } from '../utils/logger.js';
 
 const execAsync = promisify(exec);
 const router = Router();
@@ -84,7 +85,16 @@ router.post('/trigger', async (req, res) => {
 
     const backup = result.rows[0];
 
-    performBackup(backup.id, volume.path, backupPath, volume.name);
+    await log({
+      level: 'info',
+      category: 'backup',
+      message: `Backup started for volume "${volume.name}"`,
+      details: { volumeId: volume_id, backupPath },
+      volumeId: volume.id.toString(),
+      backupId: backup.id
+    });
+
+    performBackup(backup.id, volume.path, backupPath, volume.name, volume.id);
 
     res.json(backup);
   } catch (error) {
@@ -97,7 +107,8 @@ async function performBackup(
   backupId: number,
   sourcePath: string,
   backupPath: string,
-  volumeName?: string
+  volumeName?: string,
+  volumeId?: number
 ) {
   try {
     await fs.mkdir(path.dirname(backupPath), { recursive: true });
@@ -125,6 +136,20 @@ async function performBackup(
       [stats.size, backupId]
     );
 
+    await log({
+      level: 'success',
+      category: 'backup',
+      message: `Backup completed successfully for volume "${volumeName || 'unknown'}"`,
+      details: {
+        backupId,
+        sizeBytes: stats.size,
+        backupPath,
+        sizeMB: Math.round(stats.size / (1024 * 1024))
+      },
+      volumeId: volumeId?.toString(),
+      backupId
+    });
+
     console.log(`Backup ${backupId} completed successfully`);
   } catch (error) {
     console.error('Error performing backup:', error);
@@ -139,6 +164,19 @@ async function performBackup(
        WHERE id = $2`,
       [errorMessage, backupId]
     );
+
+    await log({
+      level: 'error',
+      category: 'backup',
+      message: `Backup failed for volume "${volumeName || 'unknown'}"`,
+      details: {
+        backupId,
+        error: errorMessage,
+        backupPath
+      },
+      volumeId: volumeId?.toString(),
+      backupId
+    });
 
     if (volumeName) {
       await sendBackupFailureEmail(volumeName, errorMessage);
@@ -228,6 +266,20 @@ router.post('/restore', async (req, res) => {
     }
 
     await execAsync(command);
+
+    await log({
+      level: 'success',
+      category: 'restore',
+      message: `Restore completed successfully for volume "${backup.volume_name}"`,
+      details: {
+        backupId: backup_id,
+        restoreType: restore_type,
+        restorePath,
+        selectedFiles: selected_files || []
+      },
+      volumeId: backup.volume_id.toString(),
+      backupId: backup_id
+    });
 
     const backupDate = new Date(backup.created_at).toLocaleString();
     await sendRestoreCompleteEmail(backup.volume_name, backupDate);

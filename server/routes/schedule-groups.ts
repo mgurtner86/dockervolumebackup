@@ -6,6 +6,7 @@ import { promises as fs } from 'fs';
 import pool from '../db.js';
 import { getBackupStoragePath } from '../utils/cifs-mount.js';
 import { sendScheduleGroupCompleteEmail } from '../utils/email-service.js';
+import { log } from '../utils/logger.js';
 
 const execAsync = promisify(exec);
 const router = Router();
@@ -298,6 +299,18 @@ router.post('/:id/run', async (req, res) => {
     );
 
     const run = runResult.rows[0];
+    const group = groupResult.rows[0];
+
+    await log({
+      level: 'info',
+      category: 'schedule',
+      message: `Schedule group "${group.name}" started with ${totalVolumes} volumes`,
+      details: {
+        groupId: id,
+        runId: run.id,
+        volumeCount: totalVolumes
+      }
+    });
 
     executeScheduleGroup(run.id, id, volumes).catch((error) => {
       console.error('Error executing schedule group:', error);
@@ -362,6 +375,18 @@ async function executeScheduleGroup(runId: number, groupId: string, volumes: any
         [`Failed at volume: ${volume.volume_name}`, runId]
       );
 
+      await log({
+        level: 'error',
+        category: 'schedule',
+        message: `Schedule group "${groupName}" failed at volume "${volume.volume_name}"`,
+        details: {
+          groupId,
+          runId,
+          failedVolume: volume.volume_name,
+          volumeStatuses
+        }
+      });
+
       const endTime = new Date();
       await sendScheduleGroupCompleteEmail(groupName, volumeStatuses, startTime, endTime);
 
@@ -386,6 +411,19 @@ async function executeScheduleGroup(runId: number, groupId: string, volumes: any
      WHERE id = $1`,
     [groupId]
   );
+
+  await log({
+    level: 'success',
+    category: 'schedule',
+    message: `Schedule group "${groupName}" completed successfully`,
+    details: {
+      groupId,
+      runId,
+      volumeCount: volumes.length,
+      volumeStatuses,
+      duration: Math.round((endTime.getTime() - startTime.getTime()) / 1000)
+    }
+  });
 
   await sendScheduleGroupCompleteEmail(groupName, volumeStatuses, startTime, endTime);
 }
