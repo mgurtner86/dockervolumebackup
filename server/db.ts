@@ -60,10 +60,47 @@ export const initDatabase = async () => {
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
 
+      CREATE TABLE IF NOT EXISTS schedule_groups (
+        id SERIAL PRIMARY KEY,
+        name TEXT NOT NULL,
+        description TEXT DEFAULT '',
+        cron_expression TEXT NOT NULL,
+        enabled BOOLEAN DEFAULT true,
+        last_run TIMESTAMP,
+        next_run TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS schedule_group_volumes (
+        id SERIAL PRIMARY KEY,
+        group_id INTEGER NOT NULL REFERENCES schedule_groups(id) ON DELETE CASCADE,
+        volume_id INTEGER NOT NULL REFERENCES volumes(id) ON DELETE CASCADE,
+        execution_order INTEGER NOT NULL DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(group_id, volume_id)
+      );
+
+      CREATE TABLE IF NOT EXISTS schedule_group_runs (
+        id SERIAL PRIMARY KEY,
+        group_id INTEGER NOT NULL REFERENCES schedule_groups(id) ON DELETE CASCADE,
+        status TEXT NOT NULL DEFAULT 'pending',
+        current_volume_index INTEGER DEFAULT 0,
+        total_volumes INTEGER DEFAULT 0,
+        started_at TIMESTAMP,
+        completed_at TIMESTAMP,
+        error_message TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
       CREATE INDEX IF NOT EXISTS idx_backups_volume_id ON backups(volume_id);
       CREATE INDEX IF NOT EXISTS idx_backups_status ON backups(status);
       CREATE INDEX IF NOT EXISTS idx_schedules_volume_id ON schedules(volume_id);
       CREATE INDEX IF NOT EXISTS idx_schedules_enabled ON schedules(enabled);
+      CREATE INDEX IF NOT EXISTS idx_schedule_group_volumes_group_id ON schedule_group_volumes(group_id);
+      CREATE INDEX IF NOT EXISTS idx_schedule_group_volumes_volume_id ON schedule_group_volumes(volume_id);
+      CREATE INDEX IF NOT EXISTS idx_schedule_group_runs_group_id ON schedule_group_runs(group_id);
+      CREATE INDEX IF NOT EXISTS idx_schedule_group_runs_status ON schedule_group_runs(status);
 
       INSERT INTO settings (key, value)
       VALUES
