@@ -117,7 +117,7 @@ export function ScheduleGroups() {
         ) : (
           <div className="divide-y divide-slate-200 dark:divide-slate-700">
             {scheduleGroups.map((group) => (
-              <div key={group.id} className="p-6 hover:bg-slate-50 dark:hover:bg-slate-750 transition-colors">
+              <div key={group.id} className="p-6 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
