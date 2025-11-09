@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { RotateCcw, Calendar, HardDrive, CheckCircle, AlertCircle } from 'lucide-react';
+import { RotateCcw, Calendar, HardDrive, CheckCircle } from 'lucide-react';
 import { api } from '../lib/api';
 import { Volume, Backup } from '../types';
+import { RestoreWizard, RestoreOptions } from './RestoreWizard';
 
 interface RestorePageProps {
   onRestoreStart: () => void;
@@ -14,7 +15,7 @@ export function RestorePage({ onRestoreStart }: RestorePageProps) {
   const [selectedBackup, setSelectedBackup] = useState<Backup | null>(null);
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [loading, setLoading] = useState(true);
-  const [restoring, setRestoring] = useState(false);
+  const [showRestoreWizard, setShowRestoreWizard] = useState(false);
 
   useEffect(() => {
     fetchVolumes();
@@ -51,17 +52,28 @@ export function RestorePage({ onRestoreStart }: RestorePageProps) {
     }
   };
 
-  const handleRestore = async () => {
-    if (!selectedBackup) return;
-
-    setRestoring(true);
+  const handleRestore = async (backupId: string, options: RestoreOptions) => {
     try {
-      await api.backups.restore(selectedBackup.id);
+      const response = await fetch('/api/backups/restore', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          backup_id: backupId,
+          restore_type: options.restoreType,
+          selected_files: options.selectedFiles,
+          custom_path: options.customPath,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Restore failed');
+      }
+
+      setShowRestoreWizard(false);
+      setSelectedBackup(null);
       onRestoreStart();
     } catch (error) {
-      console.error('Error starting restore:', error);
-    } finally {
-      setRestoring(false);
+      console.error('Error restoring backup:', error);
     }
   };
 
@@ -211,27 +223,32 @@ export function RestorePage({ onRestoreStart }: RestorePageProps) {
 
       {selectedBackup && (
         <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg p-6">
-          <div className="flex items-start gap-3 mb-4">
-            <AlertCircle className="text-blue-600 dark:text-blue-400 flex-shrink-0 mt-1" size={24} />
+          <div className="flex items-center justify-between">
             <div>
-              <h3 className="font-semibold text-blue-900 dark:text-blue-300 mb-2">Confirm Restore</h3>
-              <p className="text-sm text-blue-800 dark:text-blue-400 mb-3">
-                You are about to restore <strong>{selectedVolume?.name}</strong> from a backup taken on{' '}
-                {new Date(selectedBackup.created_at).toLocaleString()}.
+              <h3 className="font-semibold text-blue-900 dark:text-blue-300 mb-2">Selected Backup</h3>
+              <p className="text-sm text-blue-800 dark:text-blue-400 mb-1">
+                <strong>{selectedVolume?.name}</strong> - {new Date(selectedBackup.created_at).toLocaleString()}
               </p>
-              <p className="text-sm text-blue-800 dark:text-blue-400 mb-4">
-                This will replace the current data in the volume. This action cannot be undone.
+              <p className="text-sm text-blue-800 dark:text-blue-400">
+                Size: {formatSize(selectedBackup.size_bytes)}
               </p>
-              <button
-                onClick={handleRestore}
-                disabled={restoring}
-                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
-              >
-                {restoring ? 'Starting Restore...' : 'Start Restore'}
-              </button>
             </div>
+            <button
+              onClick={() => setShowRestoreWizard(true)}
+              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+            >
+              Start Restore
+            </button>
           </div>
         </div>
+      )}
+
+      {showRestoreWizard && selectedBackup && (
+        <RestoreWizard
+          backup={selectedBackup}
+          onClose={() => setShowRestoreWizard(false)}
+          onRestore={handleRestore}
+        />
       )}
     </div>
   );
