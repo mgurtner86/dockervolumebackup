@@ -6,11 +6,10 @@ import { api } from '../lib/api';
 interface BackupListProps {
   volumeId?: string;
   onTriggerBackup: () => void;
-  onSelectBackup: (backup: Backup) => void;
   onDeleteBackup: (backupId: string) => void;
 }
 
-export function BackupList({ volumeId, onTriggerBackup, onSelectBackup, onDeleteBackup }: BackupListProps) {
+export function BackupList({ volumeId, onTriggerBackup, onDeleteBackup }: BackupListProps) {
   const [backups, setBackups] = useState<Backup[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -84,12 +83,7 @@ export function BackupList({ volumeId, onTriggerBackup, onSelectBackup, onDelete
               key={backup.id}
               className={`flex items-center justify-between p-4 bg-gray-50 dark:bg-slate-700 rounded-lg transition-colors border-2 border-transparent group`}
             >
-              <div
-                className={`flex items-center gap-3 flex-1 ${
-                  backup.status === 'completed' ? 'cursor-pointer' : ''
-                }`}
-                onClick={() => backup.status === 'completed' && onSelectBackup(backup)}
-              >
+              <div className="flex items-center gap-3 flex-1">
                 <Database className="text-gray-600 dark:text-gray-400" size={24} />
                 <div className="flex-1">
                   <div className="flex items-center gap-2">

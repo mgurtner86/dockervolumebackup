@@ -1,13 +1,12 @@
 import { useState } from 'react';
-import { Server, AlertCircle, Settings as SettingsIcon, Home, LogOut, LayoutDashboard, Moon, Sun, Calendar } from 'lucide-react';
+import { Server, AlertCircle, Settings as SettingsIcon, Home, LogOut, LayoutDashboard, Moon, Sun, Calendar, RotateCcw } from 'lucide-react';
 import { useTheme } from './contexts/ThemeContext';
 import { VolumeList } from './components/VolumeList';
 import { BackupList } from './components/BackupList';
-import { ScheduleManager } from './components/ScheduleManager';
 import { Settings } from './components/Settings';
-import { RestoreWizard, RestoreOptions } from './components/RestoreWizard';
 import { Dashboard } from './components/Dashboard';
 import { ScheduleGroups } from './components/ScheduleGroups';
+import { RestorePage } from './components/RestorePage';
 import { useAuth } from './components/AuthProvider';
 import { Volume, Backup } from './types';
 import { api } from './lib/api';
@@ -15,14 +14,12 @@ import { api } from './lib/api';
 function App() {
   const { user, logout, isLocalAdmin } = useAuth();
   const { isDark, toggleTheme } = useTheme();
-  const [currentPage, setCurrentPage] = useState<'home' | 'settings' | 'dashboard' | 'schedules'>('dashboard');
+  const [currentPage, setCurrentPage] = useState<'home' | 'settings' | 'dashboard' | 'schedules' | 'restore'>('dashboard');
   const [selectedVolume, setSelectedVolume] = useState<Volume | undefined>();
   const [notification, setNotification] = useState<{
     type: 'success' | 'error';
     message: string;
   } | null>(null);
-  const [showRestoreWizard, setShowRestoreWizard] = useState(false);
-  const [selectedBackup, setSelectedBackup] = useState<Backup | null>(null);
 
   const showNotification = (type: 'success' | 'error', message: string) => {
     setNotification({ type, message });
@@ -41,39 +38,9 @@ function App() {
     }
   };
 
-  const handleSelectBackup = (backup: Backup) => {
-    setSelectedBackup(backup);
-    setShowRestoreWizard(true);
-  };
-
-  const handleRestore = async (backupId: string, options: RestoreOptions) => {
-    try {
-      const response = await fetch('/api/backups/restore', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          backup_id: backupId,
-          restore_type: options.restoreType,
-          selected_files: options.selectedFiles,
-          custom_path: options.customPath,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Restore failed');
-      }
-
-      showNotification(
-        'success',
-        `Restore completed for ${selectedBackup?.volumes?.name || 'volume'}`
-      );
-    } catch (error) {
-      showNotification('error', 'Failed to restore backup');
-      console.error('Error restoring backup:', error);
-    } finally {
-      setShowRestoreWizard(false);
-      setSelectedBackup(null);
-    }
+  const handleRestoreStart = () => {
+    showNotification('success', 'Restore started successfully');
+    setCurrentPage('dashboard');
   };
 
   const handleDeleteBackup = async (backupId: string) => {
@@ -153,6 +120,17 @@ function App() {
                 <Calendar size={20} />
                 Schedules
               </button>
+              <button
+                onClick={() => setCurrentPage('restore')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                  currentPage === 'restore'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600'
+                }`}
+              >
+                <RotateCcw size={20} />
+                Restore
+              </button>
               {isLocalAdmin && (
                 <button
                   onClick={() => setCurrentPage('settings')}
@@ -180,15 +158,15 @@ function App() {
       </header>
 
       {notification && (
-        <div className="max-w-7xl mx-auto px-6 mt-4">
+        <div className="fixed bottom-6 right-6 z-50 animate-slide-in">
           <div
-            className={`flex items-center gap-3 p-4 rounded-lg ${
+            className={`flex items-center gap-3 p-4 rounded-lg shadow-lg min-w-[300px] max-w-md ${
               notification.type === 'success'
                 ? 'bg-green-50 dark:bg-green-900/30 text-green-800 dark:text-green-300 border border-green-200 dark:border-green-800'
                 : 'bg-red-50 dark:bg-red-900/30 text-red-800 dark:text-red-300 border border-red-200 dark:border-red-800'
             }`}
           >
-            <AlertCircle size={20} />
+            <AlertCircle size={20} className="flex-shrink-0" />
             <span>{notification.message}</span>
           </div>
         </div>
@@ -202,6 +180,8 @@ function App() {
           }} />
         ) : currentPage === 'schedules' ? (
           <ScheduleGroups />
+        ) : currentPage === 'restore' ? (
+          <RestorePage onRestoreStart={handleRestoreStart} />
         ) : currentPage === 'settings' ? (
           <Settings />
         ) : (
@@ -226,11 +206,8 @@ function App() {
                   <BackupList
                     volumeId={selectedVolume.id}
                     onTriggerBackup={handleTriggerBackup}
-                    onSelectBackup={handleSelectBackup}
                     onDeleteBackup={handleDeleteBackup}
                   />
-
-                  <ScheduleManager volumeId={selectedVolume.id} />
                 </>
               ) : (
                 <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md p-12 text-center">
@@ -247,17 +224,6 @@ function App() {
           </div>
         )}
       </main>
-
-      {showRestoreWizard && selectedBackup && (
-        <RestoreWizard
-          backup={selectedBackup}
-          onClose={() => {
-            setShowRestoreWizard(false);
-            setSelectedBackup(null);
-          }}
-          onRestore={handleRestore}
-        />
-      )}
     </div>
   );
 }

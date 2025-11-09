@@ -1,6 +1,12 @@
 import { Router } from 'express';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+import path from 'path';
+import { promises as fs } from 'fs';
 import pool from '../db.js';
+import { getBackupStoragePath } from '../utils/cifs-mount.js';
 
+const execAsync = promisify(exec);
 const router = Router();
 
 router.get('/', async (req, res) => {
@@ -268,11 +274,20 @@ router.post('/:id/run', async (req, res) => {
     }
 
     const volumesResult = await pool.query(
-      `SELECT COUNT(*) as count FROM schedule_group_volumes WHERE group_id = $1`,
+      `SELECT sgv.*, v.id as volume_id, v.name as volume_name, v.path as volume_path
+       FROM schedule_group_volumes sgv
+       JOIN volumes v ON sgv.volume_id = v.id
+       WHERE sgv.group_id = $1
+       ORDER BY sgv.execution_order`,
       [id]
     );
 
-    const totalVolumes = parseInt(volumesResult.rows[0].count);
+    const volumes = volumesResult.rows;
+    const totalVolumes = volumes.length;
+
+    if (totalVolumes === 0) {
+      return res.status(400).json({ error: 'No volumes in this schedule group' });
+    }
 
     const runResult = await pool.query(
       `INSERT INTO schedule_group_runs (group_id, status, total_volumes, started_at)
@@ -281,11 +296,111 @@ router.post('/:id/run', async (req, res) => {
       [id, totalVolumes]
     );
 
-    res.json(runResult.rows[0]);
+    const run = runResult.rows[0];
+
+    executeScheduleGroup(run.id, id, volumes).catch((error) => {
+      console.error('Error executing schedule group:', error);
+    });
+
+    res.json(run);
   } catch (error) {
     console.error('Error starting schedule group run:', error);
     res.status(500).json({ error: 'Failed to start schedule group run' });
   }
 });
+
+async function executeScheduleGroup(runId: number, groupId: string, volumes: any[]) {
+  let currentIndex = 0;
+
+  for (const volume of volumes) {
+    try {
+      await pool.query(
+        `UPDATE schedule_group_runs
+         SET current_volume_index = $1
+         WHERE id = $2`,
+        [currentIndex + 1, runId]
+      );
+
+      const backupResult = await pool.query(
+        `INSERT INTO backups (volume_id, backup_path, status, started_at)
+         VALUES ($1, '', 'in_progress', CURRENT_TIMESTAMP)
+         RETURNING id`,
+        [volume.volume_id]
+      );
+
+      const backupId = backupResult.rows[0].id;
+
+      await triggerBackup(backupId, volume.volume_id, volume.volume_path, volume.volume_name);
+
+      currentIndex++;
+    } catch (error) {
+      console.error(`Error backing up volume ${volume.volume_name}:`, error);
+
+      await pool.query(
+        `UPDATE schedule_group_runs
+         SET status = 'failed',
+             error_message = $1,
+             completed_at = CURRENT_TIMESTAMP
+         WHERE id = $2`,
+        [`Failed at volume: ${volume.volume_name}`, runId]
+      );
+
+      return;
+    }
+  }
+
+  await pool.query(
+    `UPDATE schedule_group_runs
+     SET status = 'completed',
+         current_volume_index = $1,
+         completed_at = CURRENT_TIMESTAMP
+     WHERE id = $2`,
+    [currentIndex, runId]
+  );
+
+  await pool.query(
+    `UPDATE schedule_groups
+     SET last_run = CURRENT_TIMESTAMP
+     WHERE id = $1`,
+    [groupId]
+  );
+}
+
+async function triggerBackup(backupId: number, volumeId: string, volumePath: string, volumeName: string) {
+  const backupStoragePath = await getBackupStoragePath();
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const backupFileName = `${volumeName}_${timestamp}.tar.gz`;
+  const backupPath = path.join(backupStoragePath, backupFileName);
+
+  try {
+    await execAsync(
+      `tar -czf "${backupPath}" -C "${path.dirname(volumePath)}" "${path.basename(volumePath)}"`
+    );
+
+    const stats = await fs.stat(backupPath);
+    const sizeBytes = stats.size;
+
+    await pool.query(
+      `UPDATE backups
+       SET status = 'completed',
+           backup_path = $1,
+           size_bytes = $2,
+           completed_at = CURRENT_TIMESTAMP
+       WHERE id = $3`,
+      [backupPath, sizeBytes, backupId]
+    );
+  } catch (error) {
+    console.error('Backup error:', error);
+    await pool.query(
+      `UPDATE backups
+       SET status = 'failed',
+           error_message = $1,
+           completed_at = CURRENT_TIMESTAMP
+       WHERE id = $2`,
+      [error instanceof Error ? error.message : 'Unknown error', backupId]
+    );
+    throw error;
+  }
+}
 
 export default router;
