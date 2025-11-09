@@ -93,6 +93,19 @@ export const initDatabase = async () => {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
 
+      CREATE TABLE IF NOT EXISTS logs (
+        id SERIAL PRIMARY KEY,
+        timestamp TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        level TEXT NOT NULL CHECK (level IN ('info', 'success', 'warning', 'error')),
+        category TEXT NOT NULL CHECK (category IN ('backup', 'restore', 'schedule', 'system', 'auth', 'general')),
+        message TEXT NOT NULL,
+        details JSONB DEFAULT '{}'::jsonb,
+        volume_id TEXT,
+        backup_id INTEGER,
+        user_id TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
       CREATE INDEX IF NOT EXISTS idx_backups_volume_id ON backups(volume_id);
       CREATE INDEX IF NOT EXISTS idx_backups_status ON backups(status);
       CREATE INDEX IF NOT EXISTS idx_schedules_volume_id ON schedules(volume_id);
@@ -101,6 +114,10 @@ export const initDatabase = async () => {
       CREATE INDEX IF NOT EXISTS idx_schedule_group_volumes_volume_id ON schedule_group_volumes(volume_id);
       CREATE INDEX IF NOT EXISTS idx_schedule_group_runs_group_id ON schedule_group_runs(group_id);
       CREATE INDEX IF NOT EXISTS idx_schedule_group_runs_status ON schedule_group_runs(status);
+      CREATE INDEX IF NOT EXISTS idx_logs_timestamp ON logs(timestamp DESC);
+      CREATE INDEX IF NOT EXISTS idx_logs_level ON logs(level);
+      CREATE INDEX IF NOT EXISTS idx_logs_category ON logs(category);
+      CREATE INDEX IF NOT EXISTS idx_logs_volume_id ON logs(volume_id);
 
       INSERT INTO settings (key, value)
       VALUES

@@ -48,7 +48,7 @@ export function Logs() {
 
       const response = await fetch(`/api/logs?${params}`);
       const data = await response.json();
-      setLogs(data);
+      setLogs(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Error fetching logs:', error);
     } finally {
