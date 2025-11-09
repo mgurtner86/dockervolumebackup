@@ -12,6 +12,7 @@ function buildUrl(path: string, params?: Record<string, string>): string {
 export const api = {
   volumes: {
     getAll: () => fetch(buildUrl('/volumes')).then((r) => r.json()),
+    getDockerContainers: () => fetch(buildUrl('/volumes/docker-containers')).then((r) => r.json()),
     create: (data: { name: string; path: string }) =>
       fetch(buildUrl('/volumes'), {
         method: 'POST',

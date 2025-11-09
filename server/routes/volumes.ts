@@ -2,8 +2,58 @@ import { Router } from 'express';
 import pool from '../db.js';
 import { promises as fs } from 'fs';
 import path from 'path';
+import { exec } from 'child_process';
+import { promisify } from 'util';
 
 const router = Router();
+const execAsync = promisify(exec);
+
+router.get('/docker-containers', async (req, res) => {
+  try {
+    const { stdout } = await execAsync('docker ps --format "{{json .}}"');
+    const containers = stdout
+      .trim()
+      .split('\n')
+      .filter(line => line)
+      .map(line => JSON.parse(line));
+
+    const containersWithVolumes = await Promise.all(
+      containers.map(async (container: any) => {
+        try {
+          const { stdout: inspectOutput } = await execAsync(
+            `docker inspect ${container.ID}`
+          );
+          const inspectData = JSON.parse(inspectOutput)[0];
+
+          const mounts = inspectData.Mounts || [];
+          const volumes = mounts
+            .filter((mount: any) => mount.Type === 'volume')
+            .map((mount: any) => ({
+              name: mount.Name,
+              source: mount.Source,
+              destination: mount.Destination,
+            }));
+
+          return {
+            id: container.ID,
+            name: container.Names,
+            image: container.Image,
+            status: container.Status,
+            volumes,
+          };
+        } catch (error) {
+          console.error(`Error inspecting container ${container.ID}:`, error);
+          return null;
+        }
+      })
+    );
+
+    res.json(containersWithVolumes.filter(c => c !== null && c.volumes.length > 0));
+  } catch (error) {
+    console.error('Error fetching Docker containers:', error);
+    res.status(500).json({ error: 'Failed to fetch Docker containers' });
+  }
+});
 
 router.get('/', async (req, res) => {
   try {
