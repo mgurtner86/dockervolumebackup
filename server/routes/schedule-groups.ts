@@ -5,6 +5,7 @@ import path from 'path';
 import { promises as fs } from 'fs';
 import pool from '../db.js';
 import { getBackupStoragePath } from '../utils/cifs-mount.js';
+import { sendScheduleGroupCompleteEmail } from '../utils/email-service.js';
 
 const execAsync = promisify(exec);
 const router = Router();
@@ -310,7 +311,20 @@ router.post('/:id/run', async (req, res) => {
 });
 
 async function executeScheduleGroup(runId: number, groupId: string, volumes: any[]) {
+  const startTimeResult = await pool.query(
+    'SELECT started_at FROM schedule_group_runs WHERE id = $1',
+    [runId]
+  );
+  const startTime = new Date(startTimeResult.rows[0].started_at);
+
+  const groupResult = await pool.query(
+    'SELECT name FROM schedule_groups WHERE id = $1',
+    [groupId]
+  );
+  const groupName = groupResult.rows[0].name;
+
   let currentIndex = 0;
+  const volumeStatuses: Array<{ name: string; status: string }> = [];
 
   for (const volume of volumes) {
     try {
@@ -332,9 +346,12 @@ async function executeScheduleGroup(runId: number, groupId: string, volumes: any
 
       await triggerBackup(backupId, volume.volume_id, volume.volume_path, volume.volume_name);
 
+      volumeStatuses.push({ name: volume.volume_name, status: 'completed' });
       currentIndex++;
     } catch (error) {
       console.error(`Error backing up volume ${volume.volume_name}:`, error);
+
+      volumeStatuses.push({ name: volume.volume_name, status: 'failed' });
 
       await pool.query(
         `UPDATE schedule_group_runs
@@ -345,9 +362,14 @@ async function executeScheduleGroup(runId: number, groupId: string, volumes: any
         [`Failed at volume: ${volume.volume_name}`, runId]
       );
 
+      const endTime = new Date();
+      await sendScheduleGroupCompleteEmail(groupName, volumeStatuses, startTime, endTime);
+
       return;
     }
   }
+
+  const endTime = new Date();
 
   await pool.query(
     `UPDATE schedule_group_runs
@@ -364,6 +386,8 @@ async function executeScheduleGroup(runId: number, groupId: string, volumes: any
      WHERE id = $1`,
     [groupId]
   );
+
+  await sendScheduleGroupCompleteEmail(groupName, volumeStatuses, startTime, endTime);
 }
 
 async function triggerBackup(backupId: number, volumeId: string, volumePath: string, volumeName: string) {

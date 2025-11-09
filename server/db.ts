@@ -112,7 +112,16 @@ export const initDatabase = async () => {
         ('azure_ad_client_secret', ''),
         ('azure_ad_tenant_id', ''),
         ('azure_ad_required_group_id', ''),
-        ('azure_ad_enabled', 'false')
+        ('azure_ad_enabled', 'false'),
+        ('email_enabled', 'false'),
+        ('email_ms_tenant_id', ''),
+        ('email_ms_client_id', ''),
+        ('email_ms_client_secret', ''),
+        ('email_from_address', ''),
+        ('email_to_addresses', ''),
+        ('email_notify_backup_failure', 'true'),
+        ('email_notify_restore_complete', 'true'),
+        ('email_notify_schedule_complete', 'true')
       ON CONFLICT (key) DO NOTHING;
     `);
 

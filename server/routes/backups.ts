@@ -5,6 +5,7 @@ import { promisify } from 'util';
 import path from 'path';
 import { promises as fs } from 'fs';
 import { getBackupStoragePath } from '../utils/cifs-mount.js';
+import { sendBackupFailureEmail, sendRestoreCompleteEmail } from '../utils/email-service.js';
 
 const execAsync = promisify(exec);
 const router = Router();
@@ -83,7 +84,7 @@ router.post('/trigger', async (req, res) => {
 
     const backup = result.rows[0];
 
-    performBackup(backup.id, volume.path, backupPath);
+    performBackup(backup.id, volume.path, backupPath, volume.name);
 
     res.json(backup);
   } catch (error) {
@@ -95,7 +96,8 @@ router.post('/trigger', async (req, res) => {
 async function performBackup(
   backupId: number,
   sourcePath: string,
-  backupPath: string
+  backupPath: string,
+  volumeName?: string
 ) {
   try {
     await fs.mkdir(path.dirname(backupPath), { recursive: true });
@@ -127,14 +129,20 @@ async function performBackup(
   } catch (error) {
     console.error('Error performing backup:', error);
 
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
     await pool.query(
       `UPDATE backups
        SET status = 'failed',
            error_message = $1,
            completed_at = CURRENT_TIMESTAMP
        WHERE id = $2`,
-      [error instanceof Error ? error.message : 'Unknown error', backupId]
+      [errorMessage, backupId]
     );
+
+    if (volumeName) {
+      await sendBackupFailureEmail(volumeName, errorMessage);
+    }
   }
 }
 
@@ -191,7 +199,7 @@ router.post('/restore', async (req, res) => {
 
   try {
     const result = await pool.query(
-      `SELECT b.*, v.path as volume_path
+      `SELECT b.*, v.path as volume_path, v.name as volume_name
        FROM backups b
        JOIN volumes v ON b.volume_id = v.id
        WHERE b.id = $1`,
@@ -220,6 +228,9 @@ router.post('/restore', async (req, res) => {
     }
 
     await execAsync(command);
+
+    const backupDate = new Date(backup.created_at).toLocaleString();
+    await sendRestoreCompleteEmail(backup.volume_name, backupDate);
 
     res.json({ success: true, message: 'Restore completed successfully' });
   } catch (error) {
