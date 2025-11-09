@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { getAuthUrl, handleAuthCallback, validateGroupMembership, authenticateLocal, hashPassword, hasAnyUsers, isAuthEnabled } from '../auth.js';
 import pool from '../db.js';
+import bcrypt from 'bcrypt';
 
 const router = Router();
 
@@ -118,12 +119,32 @@ router.get('/callback', async (req, res) => {
   }
 });
 
-router.get('/me', (req, res) => {
+router.get('/me', async (req, res) => {
   if (!req.session || !req.session.user) {
     return res.status(401).json({ error: 'Not authenticated' });
   }
 
   const user = req.session.user;
+  let photo = null;
+
+  if (user.authType === 'entra' && user.accessToken) {
+    try {
+      const photoResponse = await fetch('https://graph.microsoft.com/v1.0/me/photo/$value', {
+        headers: {
+          'Authorization': `Bearer ${user.accessToken}`,
+        },
+      });
+
+      if (photoResponse.ok) {
+        const arrayBuffer = await photoResponse.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+        photo = buffer.toString('base64');
+      }
+    } catch (error) {
+      console.log('Could not fetch profile photo:', error);
+    }
+  }
+
   res.json({
     id: user.id,
     name: user.name,
@@ -131,6 +152,7 @@ router.get('/me', (req, res) => {
     username: user.username,
     role: user.role,
     authType: user.authType,
+    photo,
   });
 });
 
@@ -141,6 +163,51 @@ router.get('/config', async (req, res) => {
   } catch (error) {
     console.error('Error getting auth config:', error);
     res.status(500).json({ error: 'Failed to get auth config' });
+  }
+});
+
+router.post('/change-password', async (req, res) => {
+  if (!req.session || !req.session.user || req.session.user.authType !== 'local') {
+    return res.status(401).json({ error: 'Not authenticated as local user' });
+  }
+
+  const { currentPassword, newPassword } = req.body;
+
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({ error: 'Current and new password required' });
+  }
+
+  if (newPassword.length < 6) {
+    return res.status(400).json({ error: 'Password must be at least 6 characters' });
+  }
+
+  try {
+    const result = await pool.query(
+      'SELECT password_hash FROM users WHERE id = $1',
+      [req.session.user.id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const isValid = await bcrypt.compare(currentPassword, result.rows[0].password_hash);
+
+    if (!isValid) {
+      return res.status(401).json({ error: 'Current password is incorrect' });
+    }
+
+    const newPasswordHash = await hashPassword(newPassword);
+
+    await pool.query(
+      'UPDATE users SET password_hash = $1 WHERE id = $2',
+      [newPasswordHash, req.session.user.id]
+    );
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error changing password:', error);
+    res.status(500).json({ error: 'Failed to change password' });
   }
 });
 

@@ -7,6 +7,7 @@ interface User {
   authType?: 'local' | 'entra';
   role?: string;
   username?: string;
+  photo?: string;
 }
 
 interface AuthContextType {
