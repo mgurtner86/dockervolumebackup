@@ -248,11 +248,11 @@ export function Logs() {
                             {formatTimestamp(log.timestamp)}
                           </span>
                         </div>
-                        <p className="text-sm text-slate-800 dark:text-slate-200 font-medium">
+                        <p className="text-sm text-slate-800 dark:text-slate-200 font-medium break-words">
                           {log.message}
                         </p>
                         {log.details && Object.keys(log.details).length > 0 && (
-                          <pre className="mt-2 text-xs text-slate-600 dark:text-slate-400 bg-white dark:bg-slate-900/50 p-2 rounded overflow-x-auto">
+                          <pre className="mt-2 text-xs text-slate-600 dark:text-slate-400 bg-white dark:bg-slate-900/50 p-2 rounded overflow-x-auto break-all whitespace-pre-wrap">
                             {JSON.stringify(log.details, null, 2)}
                           </pre>
                         )}

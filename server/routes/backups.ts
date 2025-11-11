@@ -287,7 +287,12 @@ router.post('/restore', async (req, res) => {
     });
 
     const backupDate = new Date(backup.created_at).toLocaleString();
-    await sendRestoreCompleteEmail(backup.volume_name, backupDate);
+    await sendRestoreCompleteEmail(
+      backup.volume_name,
+      backupDate,
+      restore_type || 'full',
+      selected_files
+    );
 
     res.json({ success: true, message: 'Restore completed successfully' });
   } catch (error) {

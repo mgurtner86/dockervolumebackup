@@ -145,8 +145,8 @@ export function RestorePage({ onRestoreStart }: RestorePageProps) {
                       : 'bg-slate-50 dark:bg-slate-700 border-2 border-transparent hover:bg-slate-100 dark:hover:bg-slate-600'
                   }`}
                 >
-                  <div className="font-medium text-slate-800 dark:text-white">{volume.name}</div>
-                  <div className="text-sm text-slate-600 dark:text-slate-400 truncate">{volume.path}</div>
+                  <div className="font-medium text-slate-800 dark:text-white break-words">{volume.name}</div>
+                  <div className="text-sm text-slate-600 dark:text-slate-400 break-all">{volume.path}</div>
                 </button>
               ))
             )}

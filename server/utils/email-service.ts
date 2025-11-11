@@ -187,13 +187,38 @@ export async function sendBackupFailureEmail(volumeName: string, errorMessage: s
   await sendEmail({ subject, body, isHtml: true });
 }
 
-export async function sendRestoreCompleteEmail(volumeName: string, backupDate: string): Promise<void> {
+export async function sendRestoreCompleteEmail(
+  volumeName: string,
+  backupDate: string,
+  restoreType: string,
+  selectedFiles?: string[]
+): Promise<void> {
   const notifyResult = await pool.query(
     "SELECT value FROM settings WHERE key = 'email_notify_restore_complete'"
   );
 
   if (notifyResult.rows.length === 0 || notifyResult.rows[0].value !== 'true') {
     return;
+  }
+
+  const restoreTypeLabel = restoreType === 'selective' ? 'File-Level Restore' : 'Full Restore';
+
+  let filesSection = '';
+  if (restoreType === 'selective' && selectedFiles && selectedFiles.length > 0) {
+    const filesList = selectedFiles.map(file =>
+      `<li style="padding: 4px 0;">${file}</li>`
+    ).join('');
+
+    filesSection = `
+    <tr>
+      <td style="padding: 8px; font-weight: bold; border-bottom: 1px solid #ddd; vertical-align: top;">Restored Files:</td>
+      <td style="padding: 8px; border-bottom: 1px solid #ddd;">
+        <ul style="margin: 0; padding-left: 20px;">
+          ${filesList}
+        </ul>
+      </td>
+    </tr>
+    `;
   }
 
   const subject = `✅ Restore Completed: ${volumeName}`;
@@ -209,6 +234,10 @@ export async function sendRestoreCompleteEmail(volumeName: string, backupDate: s
       <td style="padding: 8px; border-bottom: 1px solid #ddd;">${volumeName}</td>
     </tr>
     <tr>
+      <td style="padding: 8px; font-weight: bold; border-bottom: 1px solid #ddd;">Restore Type:</td>
+      <td style="padding: 8px; border-bottom: 1px solid #ddd;">${restoreTypeLabel}</td>
+    </tr>
+    <tr>
       <td style="padding: 8px; font-weight: bold; border-bottom: 1px solid #ddd;">Backup Date:</td>
       <td style="padding: 8px; border-bottom: 1px solid #ddd;">${backupDate}</td>
     </tr>
@@ -216,6 +245,7 @@ export async function sendRestoreCompleteEmail(volumeName: string, backupDate: s
       <td style="padding: 8px; font-weight: bold; border-bottom: 1px solid #ddd;">Restored At:</td>
       <td style="padding: 8px; border-bottom: 1px solid #ddd;">${new Date().toLocaleString()}</td>
     </tr>
+    ${filesSection}
   </table>
 
   <p style="color: #666; font-size: 14px;">The volume data has been successfully restored.</p>
