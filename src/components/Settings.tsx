@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Settings as SettingsIcon, Save, AlertCircle, Shield, Mail } from 'lucide-react';
+import { Settings as SettingsIcon, Save, AlertCircle, Shield, Mail, Image as ImageIcon, Upload, X } from 'lucide-react';
 import { api } from '../lib/api';
 
 export function Settings() {
@@ -24,6 +24,9 @@ export function Settings() {
   const [emailNotifyBackupFailure, setEmailNotifyBackupFailure] = useState(true);
   const [emailNotifyRestoreComplete, setEmailNotifyRestoreComplete] = useState(true);
   const [emailNotifyScheduleComplete, setEmailNotifyScheduleComplete] = useState(true);
+
+  const [loginLogo, setLoginLogo] = useState('');
+  const [headerLogo, setHeaderLogo] = useState('');
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -60,6 +63,9 @@ export function Settings() {
       setEmailNotifyBackupFailure(data.email_notify_backup_failure !== 'false');
       setEmailNotifyRestoreComplete(data.email_notify_restore_complete !== 'false');
       setEmailNotifyScheduleComplete(data.email_notify_schedule_complete !== 'false');
+
+      setLoginLogo(data.login_logo || '');
+      setHeaderLogo(data.header_logo || '');
     } catch (error) {
       console.error('Error loading settings:', error);
       showNotification('error', 'Failed to load settings');
@@ -71,6 +77,37 @@ export function Settings() {
   const showNotification = (type: 'success' | 'error', message: string) => {
     setNotification({ type, message });
     setTimeout(() => setNotification(null), 5000);
+  };
+
+  const handleLogoUpload = (file: File, type: 'login' | 'header') => {
+    if (!file.type.startsWith('image/')) {
+      showNotification('error', 'Please upload a valid image file');
+      return;
+    }
+
+    if (file.size > 2 * 1024 * 1024) {
+      showNotification('error', 'Image size must be less than 2MB');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const base64 = e.target?.result as string;
+      if (type === 'login') {
+        setLoginLogo(base64);
+      } else {
+        setHeaderLogo(base64);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveLogo = (type: 'login' | 'header') => {
+    if (type === 'login') {
+      setLoginLogo('');
+    } else {
+      setHeaderLogo('');
+    }
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -97,6 +134,8 @@ export function Settings() {
         email_notify_backup_failure: emailNotifyBackupFailure ? 'true' : 'false',
         email_notify_restore_complete: emailNotifyRestoreComplete ? 'true' : 'false',
         email_notify_schedule_complete: emailNotifyScheduleComplete ? 'true' : 'false',
+        login_logo: loginLogo,
+        header_logo: headerLogo,
       });
       showNotification('success', 'Settings saved successfully');
       await loadSettings();
@@ -481,6 +520,137 @@ export function Settings() {
                 </div>
               </>
             )}
+
+            <div className="flex gap-3 pt-4 border-t border-gray-200 dark:border-slate-700">
+              <button
+                type="submit"
+                disabled={saving}
+                className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+              >
+                <Save size={20} />
+                {saving ? 'Saving...' : 'Save Settings'}
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md p-6">
+        <div className="flex items-center gap-3 mb-6">
+          <ImageIcon className="text-purple-600 dark:text-purple-400" size={28} />
+          <h2 className="text-2xl font-semibold text-gray-800 dark:text-white">Branding</h2>
+        </div>
+
+        <form onSubmit={handleSave}>
+          <div className="space-y-6">
+            <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6">
+              <h4 className="font-medium text-blue-900 dark:text-blue-300 mb-2">Custom Logos</h4>
+              <p className="text-sm text-blue-800 dark:text-blue-400">
+                Upload custom logos for the login page and application header. Recommended formats: PNG, SVG, or JPG. Maximum file size: 2MB.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-3">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Login Page Logo
+                </label>
+                <div className="border-2 border-dashed border-gray-300 dark:border-slate-600 rounded-lg p-6 text-center">
+                  {loginLogo ? (
+                    <div className="relative">
+                      <img
+                        src={loginLogo}
+                        alt="Login Logo"
+                        className="max-h-32 mx-auto object-contain"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveLogo('login')}
+                        className="absolute top-0 right-0 -mt-2 -mr-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                  ) : (
+                    <div>
+                      <Upload className="mx-auto text-gray-400 mb-2" size={32} />
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                        Click or drag to upload
+                      </p>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handleLogoUpload(file, 'login');
+                        }}
+                        className="hidden"
+                        id="loginLogoInput"
+                      />
+                      <label
+                        htmlFor="loginLogoInput"
+                        className="inline-block px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors cursor-pointer"
+                      >
+                        Choose File
+                      </label>
+                    </div>
+                  )}
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  This logo will appear on the login page
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Header Logo
+                </label>
+                <div className="border-2 border-dashed border-gray-300 dark:border-slate-600 rounded-lg p-6 text-center">
+                  {headerLogo ? (
+                    <div className="relative">
+                      <img
+                        src={headerLogo}
+                        alt="Header Logo"
+                        className="max-h-32 mx-auto object-contain"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveLogo('header')}
+                        className="absolute top-0 right-0 -mt-2 -mr-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                  ) : (
+                    <div>
+                      <Upload className="mx-auto text-gray-400 mb-2" size={32} />
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                        Click or drag to upload
+                      </p>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handleLogoUpload(file, 'header');
+                        }}
+                        className="hidden"
+                        id="headerLogoInput"
+                      />
+                      <label
+                        htmlFor="headerLogoInput"
+                        className="inline-block px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors cursor-pointer"
+                      >
+                        Choose File
+                      </label>
+                    </div>
+                  )}
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  This logo will appear in the application header
+                </p>
+              </div>
+            </div>
 
             <div className="flex gap-3 pt-4 border-t border-gray-200 dark:border-slate-700">
               <button

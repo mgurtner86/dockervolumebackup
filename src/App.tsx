@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Server, AlertCircle, Settings as SettingsIcon, Home, LayoutDashboard, Moon, Sun, Calendar, RotateCcw, FileText } from 'lucide-react';
 import { useTheme } from './contexts/ThemeContext';
 import { VolumeList } from './components/VolumeList';
@@ -19,6 +19,7 @@ function App() {
   const { isDark, toggleTheme } = useTheme();
   const [currentPage, setCurrentPage] = useState<'home' | 'settings' | 'dashboard' | 'schedules' | 'restore' | 'logs'>('dashboard');
   const [selectedVolume, setSelectedVolume] = useState<Volume | undefined>();
+  const [headerLogo, setHeaderLogo] = useState('');
   const [notification, setNotification] = useState<{
     type: 'success' | 'error';
     message: string;
@@ -26,6 +27,18 @@ function App() {
   const [deleteBackupConfirm, setDeleteBackupConfirm] = useState<{ isOpen: boolean; backupId?: string }>({
     isOpen: false,
   });
+
+  useEffect(() => {
+    const fetchLogo = async () => {
+      try {
+        const settings = await api.settings.getAll();
+        setHeaderLogo(settings.header_logo || '');
+      } catch (error) {
+        console.error('Error loading header logo:', error);
+      }
+    };
+    fetchLogo();
+  }, []);
 
   const showNotification = (type: 'success' | 'error', message: string) => {
     setNotification({ type, message });
@@ -68,15 +81,21 @@ function App() {
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <Server className="text-blue-600" size={32} />
-              <div>
-                <h1 className="text-2xl font-bold text-slate-800 dark:text-white">
-                  Docker Volume Backup Manager
-                </h1>
-                <p className="text-sm text-slate-600 dark:text-slate-300">
-                  Backup and restore your Docker volumes with ease
-                </p>
-              </div>
+              {headerLogo ? (
+                <img src={headerLogo} alt="Logo" className="max-h-12 object-contain" />
+              ) : (
+                <>
+                  <Server className="text-blue-600" size={32} />
+                  <div>
+                    <h1 className="text-2xl font-bold text-slate-800 dark:text-white">
+                      Docker Volume Backup Manager
+                    </h1>
+                    <p className="text-sm text-slate-600 dark:text-slate-300">
+                      Backup and restore your Docker volumes with ease
+                    </p>
+                  </div>
+                </>
+              )}
             </div>
             <div className="flex items-center gap-4">
               <nav className="flex items-center gap-2">
@@ -178,10 +197,13 @@ function App() {
 
       <main className="max-w-7xl mx-auto px-6 py-8">
         {currentPage === 'dashboard' ? (
-          <Dashboard onSelectVolume={(volume) => {
-            setSelectedVolume(volume);
-            setCurrentPage('home');
-          }} />
+          <Dashboard
+            onSelectVolume={(volume) => {
+              setSelectedVolume(volume);
+              setCurrentPage('home');
+            }}
+            onNavigateToSchedules={() => setCurrentPage('schedules')}
+          />
         ) : currentPage === 'schedules' ? (
           <ScheduleGroups />
         ) : currentPage === 'restore' ? (

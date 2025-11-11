@@ -8,6 +8,7 @@ export function Login() {
   const [entraEnabled, setEntraEnabled] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showLocalLogin, setShowLocalLogin] = useState(false);
+  const [loginLogo, setLoginLogo] = useState('');
 
   const [setupUsername, setSetupUsername] = useState('');
   const [setupPassword, setSetupPassword] = useState('');
@@ -30,6 +31,10 @@ export function Login() {
       const configResponse = await fetch('/auth/config');
       const configData = await configResponse.json();
       setEntraEnabled(configData.entraEnabled);
+
+      const settingsResponse = await fetch('/api/settings');
+      const settingsData = await settingsResponse.json();
+      setLoginLogo(settingsData.login_logo || '');
     } catch (error) {
       console.error('Error checking setup:', error);
     } finally {
@@ -135,12 +140,16 @@ export function Login() {
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
         <div className="bg-white rounded-lg shadow-xl p-8 max-w-md w-full">
           <div className="flex flex-col items-center gap-6">
-            <div className="flex items-center gap-3">
-              <Server className="text-blue-600" size={48} />
-              <h1 className="text-3xl font-bold text-slate-800">
-                Docker Volume<br />Backup Manager
-              </h1>
-            </div>
+            {loginLogo ? (
+              <img src={loginLogo} alt="Logo" className="max-h-24 object-contain" />
+            ) : (
+              <div className="flex items-center gap-3">
+                <Server className="text-blue-600" size={48} />
+                <h1 className="text-3xl font-bold text-slate-800">
+                  Docker Volume<br />Backup Manager
+                </h1>
+              </div>
+            )}
 
             <div className="w-full">
               <h2 className="text-xl font-semibold text-slate-800 mb-2">Initial Setup</h2>
@@ -216,12 +225,16 @@ export function Login() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
       <div className="bg-white rounded-lg shadow-xl p-8 max-w-md w-full">
         <div className="flex flex-col items-center gap-6">
-          <div className="flex items-center gap-3">
-            <Server className="text-blue-600" size={48} />
-            <h1 className="text-3xl font-bold text-slate-800">
-              Docker Volume<br />Backup Manager
-            </h1>
-          </div>
+          {loginLogo ? (
+            <img src={loginLogo} alt="Logo" className="max-h-24 object-contain" />
+          ) : (
+            <div className="flex items-center gap-3">
+              <Server className="text-blue-600" size={48} />
+              <h1 className="text-3xl font-bold text-slate-800">
+                Docker Volume<br />Backup Manager
+              </h1>
+            </div>
+          )}
 
           <div className="w-full space-y-4">
             {error && (

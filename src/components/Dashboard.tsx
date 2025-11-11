@@ -5,6 +5,7 @@ import { Volume, Backup, ScheduleGroup, ScheduleGroupRun } from '../types';
 
 interface DashboardProps {
   onSelectVolume?: (volume: Volume) => void;
+  onNavigateToSchedules?: () => void;
 }
 
 interface BackupStats {
@@ -23,7 +24,7 @@ interface BackupStats {
   }>;
 }
 
-export function Dashboard({ onSelectVolume }: DashboardProps) {
+export function Dashboard({ onSelectVolume, onNavigateToSchedules }: DashboardProps) {
   const [volumes, setVolumes] = useState<Volume[]>([]);
   const [backups, setBackups] = useState<Backup[]>([]);
   const [scheduleGroups, setScheduleGroups] = useState<ScheduleGroup[]>([]);
@@ -85,13 +86,21 @@ export function Dashboard({ onSelectVolume }: DashboardProps) {
         (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       )[0];
 
-      const recentFailures = volumeBackups
+      const sortedVolumeBackups = volumeBackups.sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+      const recentFailures = sortedVolumeBackups
         .slice(0, 3)
         .filter((b) => b.status === 'failed').length;
 
       let status: 'healthy' | 'warning' | 'error' = 'healthy';
-      if (recentFailures >= 2) status = 'error';
-      else if (recentFailures === 1 || !latestBackup) status = 'warning';
+      if (latestBackup?.status === 'failed') {
+        status = 'error';
+      } else if (recentFailures >= 2) {
+        status = 'error';
+      } else if (recentFailures === 1 || !latestBackup) {
+        status = 'warning';
+      }
 
       return {
         volumeName: volume.name,
@@ -249,7 +258,10 @@ export function Dashboard({ onSelectVolume }: DashboardProps) {
             </h2>
           </div>
           <div className="space-y-3">
-            {backups.slice(0, 5).map((backup) => (
+            {backups
+              .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+              .slice(0, 5)
+              .map((backup) => (
               <div
                 key={backup.id}
                 className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-700 rounded-lg"
@@ -374,7 +386,8 @@ export function Dashboard({ onSelectVolume }: DashboardProps) {
               return (
                 <div
                   key={group.id}
-                  className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg hover:shadow-md transition-shadow"
+                  onClick={() => onNavigateToSchedules && onNavigateToSchedules()}
+                  className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg hover:shadow-md transition-all cursor-pointer hover:border-blue-400 dark:hover:border-blue-500"
                 >
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex-1">
