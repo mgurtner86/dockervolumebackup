@@ -113,19 +113,28 @@ async function performBackup(
   try {
     await fs.mkdir(path.dirname(backupPath), { recursive: true });
 
-    const command = `tar -czf "${backupPath}" -C "${path.dirname(sourcePath)}" "${path.basename(sourcePath)}" --warning=no-file-changed --warning=no-file-removed 2>&1`;
+    const command = `tar -czf "${backupPath}" -C "${path.dirname(sourcePath)}" "${path.basename(sourcePath)}" 2>&1`;
 
     try {
       await execAsync(command);
+      console.log(`Backup completed successfully for ${volumeName || 'volume'}`);
     } catch (error: any) {
-      if (error.code === 1) {
-        const stderr = error.stderr || '';
-        if (stderr.includes('file changed as we read it') || stderr.includes('file removed before we read it')) {
-          console.log(`Backup completed with warnings (files changed during backup) - this is normal for live databases`);
-        } else {
-          throw error;
-        }
+      // tar exit code 1 means files changed during backup (common for live databases)
+      // tar exit code 2 means fatal error
+      const errorOutput = error.message || error.stdout || error.stderr || '';
+
+      // Check if this is just a "file changed" warning (exit code 1)
+      if (errorOutput.includes('file changed as we read it') ||
+          errorOutput.includes('file removed before we read it') ||
+          errorOutput.includes('file shrank by')) {
+        console.log(`Backup completed with warnings (files changed during backup) - this is normal for live databases: ${volumeName || 'volume'}`);
+        // Continue - the backup file was created successfully
+      } else if (error.code === 1) {
+        // Exit code 1 but no file changed messages - treat as warning and continue
+        console.log(`Backup completed with tar exit code 1 (non-fatal warnings) for ${volumeName || 'volume'}`);
+        // Continue - the backup file was likely created successfully
       } else {
+        // Exit code 2 or other fatal error
         throw error;
       }
     }
