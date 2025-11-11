@@ -20,6 +20,8 @@ COPY --from=builder /app/dist/client /usr/share/nginx/html
 COPY --from=builder /app/dist/server ./dist/server
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./
+COPY --from=builder /app/apply-migration.js ./
+COPY --from=builder /app/server/migrations ./server/migrations
 
 COPY nginx.conf /etc/nginx/http.d/default.conf
 
