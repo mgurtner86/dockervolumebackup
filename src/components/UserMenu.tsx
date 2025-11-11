@@ -94,29 +94,19 @@ export function UserMenu({ onLogout }: UserMenuProps) {
     <div className="relative" ref={menuRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors max-w-xs"
+        className="p-1 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
       >
         {!isLocalAdmin && getProfilePicture() ? (
           <img
             src={getProfilePicture()!}
             alt="Profile"
-            className="w-8 h-8 rounded-full flex-shrink-0"
+            className="w-10 h-10 rounded-full"
           />
         ) : (
-          <div className="w-8 h-8 rounded-full bg-blue-600 dark:bg-blue-500 flex items-center justify-center text-white font-medium flex-shrink-0">
+          <div className="w-10 h-10 rounded-full bg-blue-600 dark:bg-blue-500 flex items-center justify-center text-white font-medium">
             {getUserInitial()}
           </div>
         )}
-        <div className="flex flex-col items-start min-w-0">
-          {user?.name && (
-            <span className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate w-full">
-              {user.name}
-            </span>
-          )}
-          <span className="text-xs text-slate-600 dark:text-slate-400 truncate w-full">
-            {user?.email}
-          </span>
-        </div>
       </button>
 
       {isOpen && (
