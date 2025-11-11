@@ -17,16 +17,25 @@ const pool = new Pool({
 async function applyMigration() {
   const client = await pool.connect();
   try {
-    console.log('Applying migration...');
+    console.log('Applying migrations...');
 
-    const migrationSQL = readFileSync(
+    const migration1 = readFileSync(
       join(__dirname, 'server/migrations/001_add_schedule_frequency_time.sql'),
       'utf-8'
     );
 
-    await client.query(migrationSQL);
+    const migration2 = readFileSync(
+      join(__dirname, 'server/migrations/002_add_schedule_groups_frequency_time.sql'),
+      'utf-8'
+    );
 
-    console.log('✓ Migration applied successfully');
+    await client.query(migration1);
+    console.log('✓ Migration 1 applied successfully');
+
+    await client.query(migration2);
+    console.log('✓ Migration 2 applied successfully');
+
+    console.log('✓ All migrations applied successfully');
   } catch (error) {
     console.error('✗ Migration failed:', error);
     throw error;
