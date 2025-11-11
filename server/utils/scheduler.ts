@@ -99,7 +99,7 @@ async function triggerBackup(volumeId: number, scheduleId: number): Promise<void
       details: { volumeId, scheduleId }
     });
 
-    const response = await fetch('http://127.0.0.1:3000/api/backups/trigger', {
+    const response = await fetch('http://127.0.0.1:3000/internal/backups/trigger', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -147,7 +147,7 @@ async function triggerScheduleGroup(groupId: number, groupName: string): Promise
       details: { groupId, groupName }
     });
 
-    const response = await fetch(`http://127.0.0.1:3000/api/schedule-groups/${groupId}/run`, {
+    const response = await fetch(`http://127.0.0.1:3000/internal/schedule-groups/${groupId}/run`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

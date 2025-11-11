@@ -33,6 +33,15 @@ app.use(session({
   },
 }));
 
+// Internal scheduler middleware - validates internal token
+const internalSchedulerMiddleware = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+  const token = req.headers['x-internal-scheduler-token'];
+  if (token === process.env.INTERNAL_SCHEDULER_TOKEN) {
+    return next();
+  }
+  return res.status(401).json({ error: 'Unauthorized' });
+};
+
 app.use('/auth', authRouter);
 app.use('/api/volumes', authMiddleware, volumesRouter);
 app.use('/api/backups', authMiddleware, backupsRouter);
@@ -40,6 +49,10 @@ app.use('/api/schedules', authMiddleware, schedulesRouter);
 app.use('/api/schedule-groups', authMiddleware, scheduleGroupsRouter);
 app.use('/api/settings', authMiddleware, settingsRouter);
 app.use('/api/logs', authMiddleware, logsRouter);
+
+// Internal endpoints for scheduler (token-based auth)
+app.use('/internal/backups', internalSchedulerMiddleware, backupsRouter);
+app.use('/internal/schedule-groups', internalSchedulerMiddleware, scheduleGroupsRouter);
 
 app.get('/health', (req, res) => {
   res.json({ status: 'ok' });

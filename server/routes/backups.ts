@@ -56,15 +56,6 @@ router.get('/', async (req, res) => {
 
 router.post('/trigger', async (req, res) => {
   const { volume_id } = req.body;
-  const internalToken = req.headers['x-internal-scheduler-token'];
-
-  // Allow internal scheduler to bypass auth check
-  const isInternalCall = internalToken === process.env.INTERNAL_SCHEDULER_TOKEN;
-
-  // If not an internal call, ensure user is authenticated
-  if (!isInternalCall && !req.session?.user) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
 
   if (!volume_id) {
     return res.status(400).json({ error: 'volume_id is required' });
