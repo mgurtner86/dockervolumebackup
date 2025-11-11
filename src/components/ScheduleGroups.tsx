@@ -139,9 +139,11 @@ export function ScheduleGroups() {
                       <div className="flex items-center gap-2 text-sm">
                         <Clock className="text-slate-400" size={16} />
                         <span className="text-slate-600 dark:text-slate-400">Schedule:</span>
-                        <code className="px-2 py-1 bg-slate-100 dark:bg-slate-700 rounded text-xs font-mono">
-                          {group.cron_expression}
-                        </code>
+                        <span className="font-medium text-slate-800 dark:text-white">
+                          {group.frequency && group.time
+                            ? `${group.frequency.charAt(0).toUpperCase() + group.frequency.slice(1)} at ${group.time}`
+                            : group.cron_expression}
+                        </span>
                       </div>
                       <div className="flex items-center gap-2 text-sm">
                         <span className="text-slate-600 dark:text-slate-400">Volumes:</span>
@@ -270,7 +272,8 @@ interface GroupModalProps {
 function GroupModal({ group, volumes, onClose, onSave }: GroupModalProps) {
   const [name, setName] = useState(group?.name || '');
   const [description, setDescription] = useState(group?.description || '');
-  const [cronExpression, setCronExpression] = useState(group?.cron_expression || '0 0 * * *');
+  const [frequency, setFrequency] = useState(group?.frequency || 'daily');
+  const [time, setTime] = useState(group?.time || '02:00');
   const [selectedVolumeIds, setSelectedVolumeIds] = useState<string[]>(
     group?.volumes.map((v) => v.volume_id) || []
   );
@@ -285,14 +288,16 @@ function GroupModal({ group, volumes, onClose, onSave }: GroupModalProps) {
         await api.scheduleGroups.update(group.id, {
           name,
           description,
-          cron_expression: cronExpression,
+          frequency,
+          time,
           volume_ids: selectedVolumeIds,
         });
       } else {
         await api.scheduleGroups.create({
           name,
           description,
-          cron_expression: cronExpression,
+          frequency,
+          time,
           volume_ids: selectedVolumeIds,
         });
       }
@@ -363,21 +368,35 @@ function GroupModal({ group, volumes, onClose, onSave }: GroupModalProps) {
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-              Cron Expression
-            </label>
-            <input
-              type="text"
-              value={cronExpression}
-              onChange={(e) => setCronExpression(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-800 dark:text-white focus:ring-2 focus:ring-blue-500 font-mono"
-              placeholder="0 0 * * *"
-              required
-            />
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-              Example: 0 0 * * * (daily at midnight)
-            </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                Frequency
+              </label>
+              <select
+                value={frequency}
+                onChange={(e) => setFrequency(e.target.value)}
+                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-800 dark:text-white focus:ring-2 focus:ring-blue-500"
+                required
+              >
+                <option value="hourly">Every Hour</option>
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                Time
+              </label>
+              <input
+                type="time"
+                value={time}
+                onChange={(e) => setTime(e.target.value)}
+                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-800 dark:text-white focus:ring-2 focus:ring-blue-500"
+                required
+              />
+            </div>
           </div>
 
           <div>

@@ -80,10 +80,10 @@ router.get('/:id', async (req, res) => {
 });
 
 router.post('/', async (req, res) => {
-  const { name, description, cron_expression, volume_ids } = req.body;
+  const { name, description, frequency, time, volume_ids } = req.body;
 
-  if (!name || !cron_expression) {
-    return res.status(400).json({ error: 'name and cron_expression are required' });
+  if (!name || !frequency || !time) {
+    return res.status(400).json({ error: 'name, frequency, and time are required' });
   }
 
   const client = await pool.connect();
@@ -91,10 +91,10 @@ router.post('/', async (req, res) => {
     await client.query('BEGIN');
 
     const groupResult = await client.query(
-      `INSERT INTO schedule_groups (name, description, cron_expression, enabled)
-       VALUES ($1, $2, $3, true)
+      `INSERT INTO schedule_groups (name, description, frequency, time, enabled)
+       VALUES ($1, $2, $3, $4, true)
        RETURNING *`,
-      [name, description || '', cron_expression]
+      [name, description || '', frequency, time]
     );
 
     const group = groupResult.rows[0];
@@ -145,7 +145,7 @@ router.post('/', async (req, res) => {
 
 router.put('/:id', async (req, res) => {
   const { id } = req.params;
-  const { name, description, cron_expression, enabled, volume_ids } = req.body;
+  const { name, description, frequency, time, enabled, volume_ids } = req.body;
 
   const client = await pool.connect();
   try {
@@ -163,9 +163,13 @@ router.put('/:id', async (req, res) => {
       updateFields.push(`description = $${paramCount++}`);
       values.push(description);
     }
-    if (cron_expression !== undefined) {
-      updateFields.push(`cron_expression = $${paramCount++}`);
-      values.push(cron_expression);
+    if (frequency !== undefined) {
+      updateFields.push(`frequency = $${paramCount++}`);
+      values.push(frequency);
+    }
+    if (time !== undefined) {
+      updateFields.push(`time = $${paramCount++}`);
+      values.push(time);
     }
     if (enabled !== undefined) {
       updateFields.push(`enabled = $${paramCount++}`);

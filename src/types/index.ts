@@ -51,7 +51,9 @@ export interface ScheduleGroup {
   id: string;
   name: string;
   description: string;
-  cron_expression: string;
+  frequency: string;
+  time: string;
+  cron_expression?: string;
   enabled: boolean;
   last_run?: string;
   next_run?: string;

@@ -75,13 +75,13 @@ export const api = {
   scheduleGroups: {
     getAll: () => fetch(buildUrl('/schedule-groups')).then((r) => r.json()),
     get: (id: string) => fetch(buildUrl(`/schedule-groups/${id}`)).then((r) => r.json()),
-    create: (data: { name: string; description?: string; cron_expression: string; volume_ids: string[] }) =>
+    create: (data: { name: string; description?: string; frequency: string; time: string; volume_ids: string[] }) =>
       fetch(buildUrl('/schedule-groups'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       }).then((r) => r.json()),
-    update: (id: string, data: { name?: string; description?: string; cron_expression?: string; enabled?: boolean; volume_ids?: string[] }) =>
+    update: (id: string, data: { name?: string; description?: string; frequency?: string; time?: string; enabled?: boolean; volume_ids?: string[] }) =>
       fetch(buildUrl(`/schedule-groups/${id}`), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
