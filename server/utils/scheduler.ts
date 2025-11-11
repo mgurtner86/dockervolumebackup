@@ -43,7 +43,7 @@ function shouldRunSchedule(schedule: Schedule | ScheduleGroup, now: Date): boole
   const scheduleMinutes = hours * 60 + minutes;
   const minuteDiff = Math.abs(nowMinutes - scheduleMinutes);
 
-  const withinTimeWindow = minuteDiff < 1;
+  const withinTimeWindow = minuteDiff <= 1;
 
   const nowTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
   const scheduleName = 'name' in schedule ? schedule.name : `Volume ${schedule.volume_id}`;
