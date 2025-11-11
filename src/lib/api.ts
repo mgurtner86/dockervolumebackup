@@ -9,6 +9,14 @@ function buildUrl(path: string, params?: Record<string, string>): string {
   return url;
 }
 
+async function handleResponse(response: Response) {
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ error: 'Request failed' }));
+    throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+  }
+  return response.json();
+}
+
 export const api = {
   volumes: {
     getAll: () => fetch(buildUrl('/volumes')).then((r) => r.json()),
@@ -73,28 +81,28 @@ export const api = {
       }).then((r) => r.json()),
   },
   scheduleGroups: {
-    getAll: () => fetch(buildUrl('/schedule-groups')).then((r) => r.json()),
-    get: (id: string) => fetch(buildUrl(`/schedule-groups/${id}`)).then((r) => r.json()),
+    getAll: () => fetch(buildUrl('/schedule-groups')).then(handleResponse),
+    get: (id: string) => fetch(buildUrl(`/schedule-groups/${id}`)).then(handleResponse),
     create: (data: { name: string; description?: string; frequency: string; time: string; volume_ids: string[] }) =>
       fetch(buildUrl('/schedule-groups'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
-      }).then((r) => r.json()),
+      }).then(handleResponse),
     update: (id: string, data: { name?: string; description?: string; frequency?: string; time?: string; enabled?: boolean; volume_ids?: string[] }) =>
       fetch(buildUrl(`/schedule-groups/${id}`), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
-      }).then((r) => r.json()),
+      }).then(handleResponse),
     delete: (id: string) =>
-      fetch(buildUrl(`/schedule-groups/${id}`), { method: 'DELETE' }).then((r) => r.json()),
+      fetch(buildUrl(`/schedule-groups/${id}`), { method: 'DELETE' }).then(handleResponse),
     getRuns: (id: string) =>
-      fetch(buildUrl(`/schedule-groups/${id}/runs`)).then((r) => r.json()),
+      fetch(buildUrl(`/schedule-groups/${id}/runs`)).then(handleResponse),
     triggerRun: (id: string) =>
       fetch(buildUrl(`/schedule-groups/${id}/run`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-      }).then((r) => r.json()),
+      }).then(handleResponse),
   },
 };

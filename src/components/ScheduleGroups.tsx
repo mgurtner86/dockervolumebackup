@@ -278,10 +278,12 @@ function GroupModal({ group, volumes, onClose, onSave }: GroupModalProps) {
     group?.volumes.map((v) => v.volume_id) || []
   );
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
+    setError(null);
 
     try {
       if (group) {
@@ -302,8 +304,9 @@ function GroupModal({ group, volumes, onClose, onSave }: GroupModalProps) {
         });
       }
       onSave();
-    } catch (error) {
-      console.error('Error saving group:', error);
+    } catch (err: any) {
+      console.error('Error saving group:', err);
+      setError(err?.message || 'Failed to save schedule group. Please check the console for details.');
     } finally {
       setSaving(false);
     }
@@ -343,6 +346,12 @@ function GroupModal({ group, volumes, onClose, onSave }: GroupModalProps) {
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {error && (
+            <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg p-4 text-red-800 dark:text-red-200">
+              {error}
+            </div>
+          )}
+
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
               Group Name
