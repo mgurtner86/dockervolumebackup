@@ -36,10 +36,18 @@ app.use(session({
 // Internal scheduler middleware - validates internal token
 const internalSchedulerMiddleware = (req: express.Request, res: express.Response, next: express.NextFunction) => {
   const token = req.headers['x-internal-scheduler-token'];
-  if (token === process.env.INTERNAL_SCHEDULER_TOKEN) {
+  const expectedToken = process.env.INTERNAL_SCHEDULER_TOKEN;
+
+  console.log('Internal token validation:', {
+    receivedToken: token,
+    expectedToken: expectedToken,
+    match: token === expectedToken
+  });
+
+  if (token === expectedToken) {
     return next();
   }
-  return res.status(401).json({ error: 'Unauthorized' });
+  return res.status(401).json({ error: 'Unauthorized - Invalid internal token' });
 };
 
 app.use('/auth', authRouter);
