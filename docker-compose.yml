@@ -26,6 +26,7 @@ services:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
       - REDIRECT_URI=https://dvbm.computech.ch/auth/callback
+      - INTERNAL_SCHEDULER_TOKEN=${INTERNAL_SCHEDULER_TOKEN:-default-internal-token-change-this}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - backup-storage:/backups
