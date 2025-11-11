@@ -14,6 +14,15 @@ interface Schedule {
   last_run: Date | null;
 }
 
+interface ScheduleGroup {
+  id: number;
+  name: string;
+  frequency: string;
+  time: string;
+  enabled: boolean;
+  last_run: Date | null;
+}
+
 let schedulerInterval: NodeJS.Timeout | null = null;
 
 function parseTime(timeString: string): { hours: number; minutes: number } {
@@ -21,7 +30,7 @@ function parseTime(timeString: string): { hours: number; minutes: number } {
   return { hours, minutes };
 }
 
-function shouldRunSchedule(schedule: Schedule, now: Date): boolean {
+function shouldRunSchedule(schedule: Schedule | ScheduleGroup, now: Date): boolean {
   if (!schedule.enabled) return false;
 
   const { hours, minutes } = parseTime(schedule.time);
@@ -104,20 +113,79 @@ async function triggerBackup(volumeId: number, scheduleId: number): Promise<void
   }
 }
 
+async function triggerScheduleGroup(groupId: number, groupName: string): Promise<void> {
+  try {
+    await log({
+      level: 'info',
+      category: 'schedule',
+      message: `Triggering scheduled run for group: ${groupName}`,
+      details: { groupId, groupName }
+    });
+
+    const response = await fetch(`http://localhost:3000/api/schedule-groups/${groupId}/run`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Schedule group trigger failed with status ${response.status}`);
+    }
+
+    await pool.query(
+      'UPDATE schedule_groups SET last_run = CURRENT_TIMESTAMP WHERE id = $1',
+      [groupId]
+    );
+
+    await log({
+      level: 'success',
+      category: 'schedule',
+      message: `Successfully triggered scheduled run for group: ${groupName}`,
+      details: { groupId, groupName }
+    });
+  } catch (error) {
+    console.error('Error triggering scheduled group run:', error);
+    await log({
+      level: 'error',
+      category: 'schedule',
+      message: `Failed to trigger scheduled run for group: ${groupName}`,
+      details: {
+        groupId,
+        groupName,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      }
+    });
+  }
+}
+
 async function checkSchedules(): Promise<void> {
   try {
-    const result = await pool.query<Schedule>(`
+    const now = new Date();
+
+    const scheduleResult = await pool.query<Schedule>(`
       SELECT id, volume_id, frequency, time, enabled, last_run
       FROM schedules
       WHERE enabled = true
     `);
 
-    const now = new Date();
-
-    for (const schedule of result.rows) {
+    for (const schedule of scheduleResult.rows) {
       if (shouldRunSchedule(schedule, now)) {
         console.log(`Running schedule ${schedule.id} for volume ${schedule.volume_id}`);
         await triggerBackup(schedule.volume_id, schedule.id);
+      }
+    }
+
+    const groupResult = await pool.query<ScheduleGroup>(`
+      SELECT id, name, frequency, time, enabled, last_run
+      FROM schedule_groups
+      WHERE enabled = true
+    `);
+
+    for (const group of groupResult.rows) {
+      if (shouldRunSchedule(group, now)) {
+        console.log(`Running schedule group ${group.id}: ${group.name}`);
+        await triggerScheduleGroup(group.id, group.name);
       }
     }
   } catch (error) {
