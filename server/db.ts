@@ -36,7 +36,9 @@ export const initDatabase = async () => {
       CREATE TABLE IF NOT EXISTS schedules (
         id SERIAL PRIMARY KEY,
         volume_id INTEGER NOT NULL REFERENCES volumes(id) ON DELETE CASCADE,
-        cron_expression TEXT NOT NULL,
+        cron_expression TEXT,
+        frequency TEXT,
+        time TEXT,
         enabled BOOLEAN DEFAULT true,
         last_run TIMESTAMP,
         next_run TIMESTAMP,

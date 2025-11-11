@@ -15,6 +15,8 @@ router.get('/', async (req, res) => {
     const schedules = result.rows.map((row) => ({
       id: row.id,
       volume_id: row.volume_id,
+      frequency: row.frequency,
+      time: row.time,
       cron_expression: row.cron_expression,
       enabled: row.enabled,
       last_run: row.last_run,
@@ -35,18 +37,18 @@ router.get('/', async (req, res) => {
 });
 
 router.post('/', async (req, res) => {
-  const { volume_id, cron_expression } = req.body;
+  const { volume_id, frequency, time } = req.body;
 
-  if (!volume_id || !cron_expression) {
-    return res.status(400).json({ error: 'volume_id and cron_expression are required' });
+  if (!volume_id || !frequency || !time) {
+    return res.status(400).json({ error: 'volume_id, frequency, and time are required' });
   }
 
   try {
     const result = await pool.query(
-      `INSERT INTO schedules (volume_id, cron_expression, enabled)
-       VALUES ($1, $2, true)
+      `INSERT INTO schedules (volume_id, frequency, time, enabled)
+       VALUES ($1, $2, $3, true)
        RETURNING *`,
-      [volume_id, cron_expression]
+      [volume_id, frequency, time]
     );
     res.json(result.rows[0]);
   } catch (error) {

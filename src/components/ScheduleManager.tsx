@@ -11,7 +11,8 @@ export function ScheduleManager({ volumeId }: ScheduleManagerProps) {
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
-  const [newSchedule, setNewSchedule] = useState('');
+  const [frequency, setFrequency] = useState('daily');
+  const [time, setTime] = useState('02:00');
 
   useEffect(() => {
     fetchSchedules();
@@ -35,10 +36,12 @@ export function ScheduleManager({ volumeId }: ScheduleManagerProps) {
     try {
       const data = await api.schedules.create({
         volume_id: volumeId,
-        cron_expression: newSchedule,
+        frequency,
+        time,
       });
       setSchedules([data, ...schedules]);
-      setNewSchedule('');
+      setFrequency('daily');
+      setTime('02:00');
       setShowAddForm(false);
     } catch (error) {
       console.error('Error adding schedule:', error);
@@ -65,16 +68,19 @@ export function ScheduleManager({ volumeId }: ScheduleManagerProps) {
     }
   };
 
-  const getCronDescription = (cron: string) => {
-    const descriptions: Record<string, string> = {
-      '0 0 * * *': 'Daily at midnight',
-      '0 2 * * *': 'Daily at 2:00 AM',
-      '0 0 * * 0': 'Weekly on Sunday',
-      '0 0 1 * *': 'Monthly on the 1st',
-      '0 */6 * * *': 'Every 6 hours',
-      '0 * * * *': 'Every hour',
+  const getScheduleDescription = (schedule: Schedule) => {
+    if (!schedule.frequency || !schedule.time) {
+      return schedule.cron_expression || 'Unknown schedule';
+    }
+
+    const frequencyLabels: Record<string, string> = {
+      'hourly': 'Every hour',
+      'daily': 'Daily',
+      'weekly': 'Weekly',
+      'monthly': 'Monthly',
     };
-    return descriptions[cron] || cron;
+
+    return `${frequencyLabels[schedule.frequency] || schedule.frequency} at ${schedule.time}`;
   };
 
   const formatDate = (dateString?: string) => {
@@ -83,13 +89,13 @@ export function ScheduleManager({ volumeId }: ScheduleManagerProps) {
   };
 
   if (loading) {
-    return <div className="text-gray-500">Loading schedules...</div>;
+    return <div className="text-gray-500 dark:text-slate-400">Loading schedules...</div>;
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-6">
+    <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md p-6">
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-semibold text-gray-800">Backup Schedules</h2>
+        <h2 className="text-xl font-semibold text-gray-800 dark:text-white">Backup Schedules</h2>
         {volumeId && (
           <button
             onClick={() => setShowAddForm(!showAddForm)}
@@ -102,25 +108,36 @@ export function ScheduleManager({ volumeId }: ScheduleManagerProps) {
       </div>
 
       {showAddForm && (
-        <form onSubmit={handleAddSchedule} className="mb-4 p-4 bg-gray-50 rounded-lg">
-          <div className="mb-3">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Cron Expression
-            </label>
-            <select
-              value={newSchedule}
-              onChange={(e) => setNewSchedule(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              required
-            >
-              <option value="">Select a schedule</option>
-              <option value="0 0 * * *">Daily at midnight</option>
-              <option value="0 2 * * *">Daily at 2:00 AM</option>
-              <option value="0 0 * * 0">Weekly on Sunday</option>
-              <option value="0 0 1 * *">Monthly on the 1st</option>
-              <option value="0 */6 * * *">Every 6 hours</option>
-              <option value="0 * * * *">Every hour</option>
-            </select>
+        <form onSubmit={handleAddSchedule} className="mb-4 p-4 bg-gray-50 dark:bg-slate-700 rounded-lg">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
+                Frequency
+              </label>
+              <select
+                value={frequency}
+                onChange={(e) => setFrequency(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                required
+              >
+                <option value="hourly">Every Hour</option>
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
+                Time
+              </label>
+              <input
+                type="time"
+                value={time}
+                onChange={(e) => setTime(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                required
+              />
+            </div>
           </div>
           <div className="flex gap-2">
             <button
@@ -132,7 +149,7 @@ export function ScheduleManager({ volumeId }: ScheduleManagerProps) {
             <button
               type="button"
               onClick={() => setShowAddForm(false)}
-              className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors"
+              className="px-4 py-2 bg-gray-300 dark:bg-slate-600 text-gray-700 dark:text-slate-200 rounded-lg hover:bg-gray-400 dark:hover:bg-slate-500 transition-colors"
             >
               Cancel
             </button>
@@ -142,12 +159,12 @@ export function ScheduleManager({ volumeId }: ScheduleManagerProps) {
 
       <div className="space-y-2">
         {schedules.length === 0 ? (
-          <p className="text-gray-500 text-center py-8">No schedules configured</p>
+          <p className="text-gray-500 dark:text-slate-400 text-center py-8">No schedules configured</p>
         ) : (
           schedules.map((schedule) => (
             <div
               key={schedule.id}
-              className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
+              className="flex items-center justify-between p-4 bg-gray-50 dark:bg-slate-700 rounded-lg"
             >
               <div className="flex items-center gap-3 flex-1">
                 <Calendar className="text-gray-600" size={24} />
@@ -166,8 +183,8 @@ export function ScheduleManager({ volumeId }: ScheduleManagerProps) {
                       </span>
                     )}
                   </div>
-                  <p className="text-sm text-gray-600">
-                    {getCronDescription(schedule.cron_expression)}
+                  <p className="text-sm text-gray-600 dark:text-slate-400">
+                    {getScheduleDescription(schedule)}
                   </p>
                   <p className="text-xs text-gray-500 mt-1">
                     Last run: {formatDate(schedule.last_run)}

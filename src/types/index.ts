@@ -25,7 +25,9 @@ export interface Backup {
 export interface Schedule {
   id: string;
   volume_id: string;
-  cron_expression: string;
+  frequency: string;
+  time: string;
+  cron_expression?: string;
   enabled: boolean;
   last_run?: string;
   next_run?: string;

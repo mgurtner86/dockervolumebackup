@@ -11,6 +11,7 @@ import authRouter from './routes/auth.js';
 import logsRouter from './routes/logs.js';
 import { mountCifsAtStartup } from './utils/cifs-mount.js';
 import { startBackupSync, syncOrphanedBackups } from './utils/backup-sync.js';
+import { startScheduler } from './utils/scheduler.js';
 import { authMiddleware } from './auth.js';
 
 const app = express();
@@ -75,6 +76,13 @@ const startServer = async () => {
       console.log('✓ Backup sync started');
     } catch (error) {
       console.error('⚠ Backup sync start failed:', error);
+    }
+
+    try {
+      startScheduler();
+      console.log('✓ Backup scheduler started');
+    } catch (error) {
+      console.error('⚠ Scheduler start failed:', error);
     }
 
     app.listen(PORT, '0.0.0.0', () => {

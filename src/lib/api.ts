@@ -48,7 +48,7 @@ export const api = {
   },
   schedules: {
     getAll: () => fetch(buildUrl('/schedules')).then((r) => r.json()),
-    create: (data: { volume_id: string; cron_expression: string }) =>
+    create: (data: { volume_id: string; frequency: string; time: string }) =>
       fetch(buildUrl('/schedules'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
