@@ -31,37 +31,61 @@ function parseTime(timeString: string): { hours: number; minutes: number } {
 }
 
 function shouldRunSchedule(schedule: Schedule | ScheduleGroup, now: Date): boolean {
-  if (!schedule.enabled) return false;
+  if (!schedule.enabled) {
+    console.log(`  Schedule/Group ${schedule.id} is disabled`);
+    return false;
+  }
 
   const { hours, minutes } = parseTime(schedule.time);
   const lastRun = schedule.last_run ? new Date(schedule.last_run) : null;
 
   const nowMinutes = now.getHours() * 60 + now.getMinutes();
   const scheduleMinutes = hours * 60 + minutes;
+  const minuteDiff = Math.abs(nowMinutes - scheduleMinutes);
 
-  const withinTimeWindow = Math.abs(nowMinutes - scheduleMinutes) < 1;
+  const withinTimeWindow = minuteDiff < 1;
+
+  const nowTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+  const scheduleName = 'name' in schedule ? schedule.name : `Volume ${schedule.volume_id}`;
+
+  console.log(`  Checking "${scheduleName}": now=${nowTime}, scheduled=${schedule.time}, diff=${minuteDiff}min, inWindow=${withinTimeWindow}`);
 
   if (!withinTimeWindow) return false;
 
-  if (!lastRun) return true;
+  if (!lastRun) {
+    console.log(`    ✓ First run - executing now`);
+    return true;
+  }
 
   const timeSinceLastRun = now.getTime() - lastRun.getTime();
   const oneHour = 60 * 60 * 1000;
+  const hoursSinceLastRun = timeSinceLastRun / oneHour;
+
+  console.log(`    Last run: ${lastRun.toISOString()} (${hoursSinceLastRun.toFixed(1)} hours ago)`);
 
   switch (schedule.frequency) {
     case 'hourly':
-      return timeSinceLastRun >= oneHour;
+      const shouldRunHourly = timeSinceLastRun >= oneHour;
+      console.log(`    Hourly check: ${shouldRunHourly ? '✓ Run' : '✗ Skip'} (need ≥1h)`);
+      return shouldRunHourly;
     case 'daily':
-      return timeSinceLastRun >= 24 * oneHour && lastRun.getDate() !== now.getDate();
+      const shouldRunDaily = timeSinceLastRun >= 24 * oneHour && lastRun.getDate() !== now.getDate();
+      console.log(`    Daily check: ${shouldRunDaily ? '✓ Run' : '✗ Skip'} (need ≥24h and different day)`);
+      return shouldRunDaily;
     case 'weekly':
       const daysSinceLastRun = Math.floor(timeSinceLastRun / (24 * oneHour));
-      return daysSinceLastRun >= 7;
+      const shouldRunWeekly = daysSinceLastRun >= 7;
+      console.log(`    Weekly check: ${shouldRunWeekly ? '✓ Run' : '✗ Skip'} (${daysSinceLastRun} days since last run, need ≥7)`);
+      return shouldRunWeekly;
     case 'monthly':
-      return (
+      const shouldRunMonthly = (
         lastRun.getMonth() !== now.getMonth() ||
         lastRun.getFullYear() !== now.getFullYear()
       ) && timeSinceLastRun >= 24 * oneHour;
+      console.log(`    Monthly check: ${shouldRunMonthly ? '✓ Run' : '✗ Skip'} (different month and ≥24h)`);
+      return shouldRunMonthly;
     default:
+      console.log(`    ✗ Unknown frequency: ${schedule.frequency}`);
       return false;
   }
 }
@@ -162,6 +186,8 @@ async function triggerScheduleGroup(groupId: number, groupName: string): Promise
 async function checkSchedules(): Promise<void> {
   try {
     const now = new Date();
+    const nowStr = now.toISOString();
+    const nowTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
 
     const scheduleResult = await pool.query<Schedule>(`
       SELECT id, volume_id, frequency, time, enabled, last_run
@@ -169,9 +195,13 @@ async function checkSchedules(): Promise<void> {
       WHERE enabled = true
     `);
 
+    if (scheduleResult.rows.length > 0) {
+      console.log(`[${nowTime}] Checking ${scheduleResult.rows.length} individual schedules...`);
+    }
+
     for (const schedule of scheduleResult.rows) {
       if (shouldRunSchedule(schedule, now)) {
-        console.log(`Running schedule ${schedule.id} for volume ${schedule.volume_id}`);
+        console.log(`[${nowTime}] Running schedule ${schedule.id} for volume ${schedule.volume_id}`);
         await triggerBackup(schedule.volume_id, schedule.id);
       }
     }
@@ -182,9 +212,16 @@ async function checkSchedules(): Promise<void> {
       WHERE enabled = true
     `);
 
+    if (groupResult.rows.length > 0) {
+      console.log(`[${nowTime}] Checking ${groupResult.rows.length} schedule groups...`);
+      groupResult.rows.forEach(group => {
+        console.log(`  - Group "${group.name}": scheduled for ${group.time} (${group.frequency}), last_run: ${group.last_run || 'never'}`);
+      });
+    }
+
     for (const group of groupResult.rows) {
       if (shouldRunSchedule(group, now)) {
-        console.log(`Running schedule group ${group.id}: ${group.name}`);
+        console.log(`[${nowTime}] ✓ Running schedule group ${group.id}: ${group.name}`);
         await triggerScheduleGroup(group.id, group.name);
       }
     }
