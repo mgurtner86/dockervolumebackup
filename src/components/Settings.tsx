@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Settings as SettingsIcon, Save, AlertCircle, Shield, Mail, Image as ImageIcon, Upload, X } from 'lucide-react';
+import { Settings as SettingsIcon, Save, AlertCircle, Shield, Mail, Image as ImageIcon, Upload, X, Clock, Trash2 } from 'lucide-react';
 import { api } from '../lib/api';
 
 export function Settings() {
@@ -27,6 +27,7 @@ export function Settings() {
 
   const [loginLogo, setLoginLogo] = useState('');
   const [headerLogo, setHeaderLogo] = useState('');
+  const [retentionDays, setRetentionDays] = useState(30);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -66,6 +67,7 @@ export function Settings() {
 
       setLoginLogo(data.login_logo || '');
       setHeaderLogo(data.header_logo || '');
+      setRetentionDays(parseInt(data.retention_days) || 30);
     } catch (error) {
       console.error('Error loading settings:', error);
       showNotification('error', 'Failed to load settings');
@@ -136,6 +138,7 @@ export function Settings() {
         email_notify_schedule_complete: emailNotifyScheduleComplete ? 'true' : 'false',
         login_logo: loginLogo,
         header_logo: headerLogo,
+        retention_days: retentionDays.toString(),
       });
       showNotification('success', 'Settings saved successfully');
       await loadSettings();
@@ -246,6 +249,75 @@ export function Settings() {
                 <li>• Credentials are stored securely in the database</li>
                 <li>• Ensure the network storage is accessible from the container</li>
                 <li>• The application requires cifs-utils to be installed</li>
+              </ul>
+            </div>
+
+            <div className="flex gap-3 pt-4 border-t border-gray-200 dark:border-slate-700">
+              <button
+                type="submit"
+                disabled={saving}
+                className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+              >
+                <Save size={20} />
+                {saving ? 'Saving...' : 'Save Settings'}
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md p-6">
+        <div className="flex items-center gap-3 mb-6">
+          <Clock className="text-orange-600 dark:text-orange-400" size={28} />
+          <h2 className="text-2xl font-semibold text-gray-800 dark:text-white">Backup Retention Policy</h2>
+        </div>
+
+        <form onSubmit={handleSave}>
+          <div className="space-y-6">
+            <div className="bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+              <div className="flex items-start gap-3">
+                <Trash2 className="text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" size={20} />
+                <div>
+                  <h4 className="font-medium text-amber-900 dark:text-amber-200 mb-2">Automatic Backup Cleanup</h4>
+                  <p className="text-sm text-amber-800 dark:text-amber-300">
+                    Backups older than the retention period will be automatically deleted to save storage space.
+                    Set to 0 to keep all backups indefinitely.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Retention Period (Days)
+              </label>
+              <div className="flex items-center gap-4">
+                <input
+                  type="number"
+                  min="0"
+                  value={retentionDays}
+                  onChange={(e) => setRetentionDays(parseInt(e.target.value) || 0)}
+                  className="w-32 px-4 py-2 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+                <span className="text-sm text-gray-600 dark:text-gray-400">
+                  {retentionDays === 0
+                    ? 'Keep all backups forever'
+                    : `Delete backups older than ${retentionDays} day${retentionDays === 1 ? '' : 's'}`
+                  }
+                </span>
+              </div>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                The cleanup runs automatically every hour. Files will be permanently deleted from storage.
+              </p>
+            </div>
+
+            <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+              <h4 className="font-medium text-blue-900 dark:text-blue-300 mb-2">Recommended Settings</h4>
+              <ul className="text-sm text-blue-800 dark:text-blue-400 space-y-1">
+                <li>• Daily backups: 30-90 days retention</li>
+                <li>• Weekly backups: 180-365 days retention</li>
+                <li>• Critical data: 0 days (manual cleanup only)</li>
+                <li>• Development environments: 7-14 days retention</li>
               </ul>
             </div>
 

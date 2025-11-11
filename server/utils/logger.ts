@@ -1,7 +1,7 @@
 import pool from '../db.js';
 
 type LogLevel = 'info' | 'success' | 'warning' | 'error';
-type LogCategory = 'backup' | 'restore' | 'schedule' | 'system' | 'auth' | 'general';
+type LogCategory = 'backup' | 'restore' | 'schedule' | 'system' | 'auth' | 'general' | 'retention';
 
 interface LogOptions {
   level: LogLevel;

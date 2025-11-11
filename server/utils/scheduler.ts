@@ -2,6 +2,7 @@ import pool from '../db.js';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { log } from './logger.js';
+import { cleanupOldBackups } from './retention-cleanup.js';
 
 const execAsync = promisify(exec);
 
@@ -24,6 +25,8 @@ interface ScheduleGroup {
 }
 
 let schedulerInterval: NodeJS.Timeout | null = null;
+let retentionCleanupInterval: NodeJS.Timeout | null = null;
+let lastRetentionCleanup: Date | null = null;
 
 function parseTime(timeString: string): { hours: number; minutes: number } {
   const [hours, minutes] = timeString.split(':').map(Number);
@@ -185,6 +188,25 @@ async function triggerScheduleGroup(groupId: number, groupName: string): Promise
   }
 }
 
+async function checkRetentionCleanup(): Promise<void> {
+  const now = new Date();
+
+  if (!lastRetentionCleanup) {
+    console.log('Running initial retention cleanup...');
+    await cleanupOldBackups();
+    lastRetentionCleanup = now;
+    return;
+  }
+
+  const hoursSinceLastCleanup = (now.getTime() - lastRetentionCleanup.getTime()) / (60 * 60 * 1000);
+
+  if (hoursSinceLastCleanup >= 1) {
+    console.log('Running scheduled retention cleanup (hourly)...');
+    await cleanupOldBackups();
+    lastRetentionCleanup = now;
+  }
+}
+
 async function checkSchedules(): Promise<void> {
   try {
     const now = new Date();
@@ -227,6 +249,8 @@ async function checkSchedules(): Promise<void> {
         await triggerScheduleGroup(group.id, group.name);
       }
     }
+
+    await checkRetentionCleanup();
   } catch (error) {
     console.error('Error checking schedules:', error);
   }
