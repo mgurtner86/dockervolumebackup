@@ -268,6 +268,15 @@ router.get('/:id/runs', async (req, res) => {
 
 router.post('/:id/run', async (req, res) => {
   const { id } = req.params;
+  const internalToken = req.headers['x-internal-scheduler-token'];
+
+  // Allow internal scheduler to bypass auth check
+  const isInternalCall = internalToken === process.env.INTERNAL_SCHEDULER_TOKEN;
+
+  // If not an internal call, ensure user is authenticated
+  if (!isInternalCall && !req.session?.user) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
 
   try {
     const groupResult = await pool.query(
@@ -308,11 +317,12 @@ router.post('/:id/run', async (req, res) => {
     await log({
       level: 'info',
       category: 'schedule',
-      message: `Schedule group "${group.name}" started with ${totalVolumes} volumes`,
+      message: `Schedule group "${group.name}" started with ${totalVolumes} volumes${isInternalCall ? ' (scheduled)' : ''}`,
       details: {
         groupId: id,
         runId: run.id,
-        volumeCount: totalVolumes
+        volumeCount: totalVolumes,
+        triggeredBy: isInternalCall ? 'scheduler' : 'manual'
       }
     });
 

@@ -103,6 +103,7 @@ async function triggerBackup(volumeId: number, scheduleId: number): Promise<void
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'X-Internal-Scheduler-Token': process.env.INTERNAL_SCHEDULER_TOKEN || 'default-internal-token-change-this',
       },
       body: JSON.stringify({ volume_id: volumeId }),
     });
@@ -150,6 +151,7 @@ async function triggerScheduleGroup(groupId: number, groupName: string): Promise
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'X-Internal-Scheduler-Token': process.env.INTERNAL_SCHEDULER_TOKEN || 'default-internal-token-change-this',
       },
     });
 
