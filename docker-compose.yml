@@ -18,14 +18,14 @@ services:
   backup-manager:
     build: .
     ports:
-      - "8080:80"
+      - "8083:80"
     environment:
       - POSTGRES_HOST=postgres
       - POSTGRES_PORT=5432
       - POSTGRES_DB=backup_manager
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
-      - REDIRECT_URI=http://dvbm.computech.ch:8080/auth/callback
+      - REDIRECT_URI=https://dvbm.computech.ch/auth/callback
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - backup-storage:/backups
