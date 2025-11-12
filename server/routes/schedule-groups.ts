@@ -341,6 +341,7 @@ async function executeScheduleGroup(runId: number, groupId: string, volumes: any
   const groupName = groupResult.rows[0].name;
 
   let currentIndex = 0;
+  let failedCount = 0;
   const volumeStatuses: Array<{ name: string; status: string }> = [];
 
   for (const volume of volumes) {
@@ -365,48 +366,53 @@ async function executeScheduleGroup(runId: number, groupId: string, volumes: any
 
       volumeStatuses.push({ name: volume.volume_name, status: 'completed' });
       currentIndex++;
+
+      await log({
+        level: 'success',
+        category: 'schedule',
+        message: `Backup completed for volume "${volume.volume_name}" in schedule group "${groupName}"`,
+        details: {
+          groupId,
+          runId,
+          volumeName: volume.volume_name,
+          progress: `${currentIndex}/${volumes.length}`
+        }
+      });
     } catch (error) {
       console.error(`Error backing up volume ${volume.volume_name}:`, error);
 
+      failedCount++;
       volumeStatuses.push({ name: volume.volume_name, status: 'failed' });
-
-      await pool.query(
-        `UPDATE schedule_group_runs
-         SET status = 'failed',
-             error_message = $1,
-             completed_at = CURRENT_TIMESTAMP
-         WHERE id = $2`,
-        [`Failed at volume: ${volume.volume_name}`, runId]
-      );
+      currentIndex++;
 
       await log({
         level: 'error',
         category: 'schedule',
-        message: `Schedule group "${groupName}" failed at volume "${volume.volume_name}"`,
+        message: `Backup failed for volume "${volume.volume_name}" in schedule group "${groupName}" - continuing with next volume`,
         details: {
           groupId,
           runId,
-          failedVolume: volume.volume_name,
-          volumeStatuses
+          volumeName: volume.volume_name,
+          error: error instanceof Error ? error.message : 'Unknown error',
+          progress: `${currentIndex}/${volumes.length}`,
+          failedCount
         }
       });
-
-      const endTime = new Date();
-      await sendScheduleGroupCompleteEmail(groupName, volumeStatuses, startTime, endTime);
-
-      return;
     }
   }
 
   const endTime = new Date();
+  const finalStatus = failedCount === 0 ? 'completed' : (failedCount === volumes.length ? 'failed' : 'completed');
+  const errorMessage = failedCount > 0 ? `${failedCount} of ${volumes.length} volumes failed` : null;
 
   await pool.query(
     `UPDATE schedule_group_runs
-     SET status = 'completed',
-         current_volume_index = $1,
+     SET status = $1,
+         current_volume_index = $2,
+         error_message = $3,
          completed_at = CURRENT_TIMESTAMP
-     WHERE id = $2`,
-    [currentIndex, runId]
+     WHERE id = $4`,
+    [finalStatus, currentIndex, errorMessage, runId]
   );
 
   await pool.query(
@@ -416,14 +422,23 @@ async function executeScheduleGroup(runId: number, groupId: string, volumes: any
     [groupId]
   );
 
+  const logLevel = failedCount === 0 ? 'success' : (failedCount === volumes.length ? 'error' : 'warning');
+  const logMessage = failedCount === 0
+    ? `Schedule group "${groupName}" completed successfully`
+    : failedCount === volumes.length
+    ? `Schedule group "${groupName}" failed completely - all ${volumes.length} volumes failed`
+    : `Schedule group "${groupName}" completed with ${failedCount} failure(s) out of ${volumes.length} volumes`;
+
   await log({
-    level: 'success',
+    level: logLevel,
     category: 'schedule',
-    message: `Schedule group "${groupName}" completed successfully`,
+    message: logMessage,
     details: {
       groupId,
       runId,
       volumeCount: volumes.length,
+      completedCount: volumes.length - failedCount,
+      failedCount,
       volumeStatuses,
       duration: Math.round((endTime.getTime() - startTime.getTime()) / 1000)
     }
