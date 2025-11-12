@@ -221,6 +221,11 @@ async function checkSchedules(): Promise<void> {
 
     if (scheduleResult.rows.length > 0) {
       console.log(`[${nowTime}] Checking ${scheduleResult.rows.length} individual schedules...`);
+    } else {
+      // Only log every 10 minutes if no schedules to reduce log spam
+      if (now.getMinutes() % 10 === 0) {
+        console.log(`[${nowTime}] No enabled individual schedules configured`);
+      }
     }
 
     for (const schedule of scheduleResult.rows) {
@@ -241,6 +246,11 @@ async function checkSchedules(): Promise<void> {
       groupResult.rows.forEach(group => {
         console.log(`  - Group "${group.name}": scheduled for ${group.time} (${group.frequency}), last_run: ${group.last_run || 'never'}`);
       });
+    } else {
+      // Only log every 10 minutes if no groups to reduce log spam
+      if (now.getMinutes() % 10 === 0) {
+        console.log(`[${nowTime}] No enabled schedule groups configured`);
+      }
     }
 
     for (const group of groupResult.rows) {
@@ -252,7 +262,15 @@ async function checkSchedules(): Promise<void> {
 
     await checkRetentionCleanup();
   } catch (error) {
-    console.error('Error checking schedules:', error);
+    console.error(`[${new Date().toISOString()}] ERROR checking schedules:`, error);
+    await log({
+      level: 'error',
+      category: 'schedule',
+      message: 'Scheduler encountered an error',
+      details: {
+        error: error instanceof Error ? error.message : 'Unknown error'
+      }
+    });
   }
 }
 
@@ -262,13 +280,22 @@ export function startScheduler(): void {
     return;
   }
 
+  const now = new Date();
   console.log('Starting backup scheduler...');
+  console.log(`Server time: ${now.toISOString()} (${now.toLocaleString()})`);
+  console.log(`Server timezone offset: ${now.getTimezoneOffset()} minutes`);
 
   checkSchedules();
 
   schedulerInterval = setInterval(() => {
     checkSchedules();
   }, 60 * 1000);
+
+  // Log scheduler heartbeat every hour to confirm it's running
+  setInterval(() => {
+    const heartbeat = new Date();
+    console.log(`[SCHEDULER HEARTBEAT] ${heartbeat.toISOString()} - Scheduler is running`);
+  }, 60 * 60 * 1000);
 
   console.log('✓ Backup scheduler started (checking every minute)');
 }
